@@ -107,6 +107,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>V:\Projects\MHW-Rich-Presence\bin;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -173,6 +174,8 @@
     <ClCompile Include="discord\user_manager.cpp" />
     <ClCompile Include="discord\voice_manager.cpp" />
     <ClCompile Include="MHW-Rich-Presence.cpp" />
+    <ClCompile Include="Player.cpp" />
+    <ClCompile Include="QuestData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="discord\achievement_manager.h" />
@@ -192,6 +195,19 @@
     <ClInclude Include="discord\types.h" />
     <ClInclude Include="discord\user_manager.h" />
     <ClInclude Include="discord\voice_manager.h" />
+    <ClInclude Include="fmt\chrono.h" />
+    <ClInclude Include="fmt\color.h" />
+    <ClInclude Include="fmt\compile.h" />
+    <ClInclude Include="fmt\core.h" />
+    <ClInclude Include="fmt\format-inl.h" />
+    <ClInclude Include="fmt\format.h" />
+    <ClInclude Include="fmt\locale.h" />
+    <ClInclude Include="fmt\ostream.h" />
+    <ClInclude Include="fmt\posix.h" />
+    <ClInclude Include="fmt\printf.h" />
+    <ClInclude Include="fmt\ranges.h" />
+    <ClInclude Include="Player.h" />
+    <ClInclude Include="QuestData.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="bin\discord_game_sdk.bundle" />
