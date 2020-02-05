@@ -9,6 +9,8 @@
 #include "Player.h"
 
 discord::Core* core{};
+std::unordered_map<int, std::string> questNames;
+std::unordered_map<int, std::string> areaNames;
 
 ///
 // Application tick management.
@@ -34,10 +36,15 @@ boolean checking = true;
 ///
 // Pointer information
 ///
-long long MHW_PTR = 0x725EC500;
+long long MHW_PTR = 0x140000000 + 0x04EA20A8;
 
-int SESSION_TIME_OFFSET = MHW_PTR + 0x90 + 0x46A0 + 0x14;
-int HR_OFFSET = MHW_PTR + 0x80 + 0x76B0 + 0x47B38;
+long long SESSION_TIME_OFFSET = 0x7FC2CA24;
+long long NAME_OFFSET = 0x6F77F210;
+long long QUEST_OFFSET = 0x1348E6748;
+
+long long SELECTED_QUEST = 0x5EEB8C28;
+
+long long HR_OFFSET = 0x7FAD1628;
 
 long long QUEST_PTR = 0x006C73E8;
 
@@ -67,15 +74,17 @@ void UpdateDiscord()
 	std::string map = "";
 
 	///
-	// Apply the necessary assets based on the player's quest status, and equipped weapons.
+	// Apply the necessary assets based on the player's quest status.
 	///
-	if (player.is_in_quest() == TRUE)
+	if (player.is_in_quest() == TRUE) {
 		map = "map_" + to_string(quest.get_map_id());
 
+		activity.GetAssets().SetSmallImage("quest");
+		activity.GetAssets().SetSmallText(questNames[quest.get_id()].c_str());
+	}
+
 	activity.GetAssets().SetLargeImage(map != "" ? map.c_str() : "astera");
-	activity.GetAssets().SetLargeText(map != "" ? "Some Quest Area" : "In Astera");
-	activity.GetAssets().SetSmallImage("long_sword");
-	activity.GetAssets().SetSmallText("Hidden Saber+");
+	activity.GetAssets().SetLargeText(map != "" ? areaNames[quest.get_map_id()].c_str() : "In Astera");
 
 	///
 	// Apply the state and details to the activity object.
@@ -130,38 +139,34 @@ DWORD FindProcessId(const std::wstring& processName)
 ///
 DWORD_PTR GetProcessBaseAddress()
 {
-	DWORD_PTR   baseAddress = 0;
-	HANDLE      processHandle = mhw_handle;
-	HMODULE*    moduleArray;
-	LPBYTE      moduleArrayBytes;
-	DWORD       bytesRequired;
+	// This structure contains lots of goodies about a module
+	MODULEENTRY32 ModuleEntry = { 0 };
+	// Grab a snapshot of all the modules in the specified process
+	HANDLE SnapShot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, process_id);
 
-	if (!processHandle) // Fail in the case that the process handle is invalid.
-		return 0x0;
+	if (!SnapShot)
+		return NULL;
 
-	if (EnumProcessModules(processHandle, NULL, 0, &bytesRequired)) {
-		if (!bytesRequired) // Fail if the bytes required don't exist.
-			return 0x0;
+	// You have to initialize the size, otherwise it will not work
+	ModuleEntry.dwSize = sizeof(ModuleEntry);
 
-		moduleArrayBytes = (LPBYTE)LocalAlloc(LPTR, bytesRequired);
+	// Get the first module in the process
+	if (!Module32First(SnapShot, &ModuleEntry))
+		return NULL;
 
-		if (!moduleArrayBytes) // Additionally, fail if for some reason it can't grab the allocation.
-			return 0x0;
+	do {
+		// Check if the module name matches the one we're looking for
+		if (!wcscmp(ModuleEntry.szModule, process_name)) {
+			// If it does, close the snapshot handle and return the base address
+			CloseHandle(SnapShot);
+			return (DWORD_PTR)ModuleEntry.modBaseAddr;
+		}
+		// Grab the next module in the snapshot
+	} while (Module32Next(SnapShot, &ModuleEntry));
 
-		unsigned int moduleCount;
-
-		moduleCount = bytesRequired / sizeof(HMODULE);
-		moduleArray = (HMODULE*)moduleArrayBytes;
-
-		if (EnumProcessModules(processHandle, moduleArray, bytesRequired, &bytesRequired))
-			baseAddress = (DWORD_PTR)moduleArray[0];
-
-		LocalFree(moduleArrayBytes);
-	}
-
-	CloseHandle(processHandle); // IMPORTANT, keeps from memory leakage.
-
-	return baseAddress;
+	// We couldn't find the specified module, so return NULL
+	CloseHandle(SnapShot);
+	return NULL;
 }
 
 ///
@@ -221,8 +226,11 @@ void ReadQuestMemory()
 	int id,
 		map_id;
 
-	ReadProcessMemory(mhw_handle, (LPCVOID)0x66BD7CF0, &id, 4, NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)0x66BD7D04, &map_id, 4, NULL);
+	long long quest_memory_address;
+
+	ReadProcessMemory(mhw_handle, (LPCVOID)SELECTED_QUEST, &quest_memory_address, sizeof(quest_memory_address), NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(quest_memory_address+0x70), &id, 4, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(quest_memory_address+0x84), &map_id, 4, NULL);
 
 	quest.set_data(id, map_id);
 }
@@ -232,21 +240,24 @@ void ReadQuestMemory()
 ///
 void ReadMemory()
 {
+	cout << (DWORD)HR_OFFSET;
+
 	float hunter_rank,
 		  session_duration = 0;
 
-	int current_quest = 0;
+	long long current_quest = 0;
+
 	char hunter_name[20];
 
-	ReadProcessMemory(mhw_handle, (LPCVOID)0x8D4501D8, &hunter_rank, 4, NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)0x8AF68120, &hunter_name, sizeof(hunter_name), NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)0x1348E6748, &current_quest, 4, NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)0x8D1AD014, &session_duration, sizeof(session_duration), NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)HR_OFFSET, &hunter_rank, 4, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)NAME_OFFSET, &hunter_name, sizeof(hunter_name), NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)SELECTED_QUEST, &current_quest, 4, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)SESSION_TIME_OFFSET, &session_duration, sizeof(session_duration), NULL);
 
 	player.set_data(hunter_name != NULL ? hunter_name : "Cross", hunter_rank, session_duration, current_quest != 0);
 	cout << player.get_name() << " -- HR " << player.get_hunter_rank() << " >> " << "Quest: " << current_quest << " Last Session Ping/Current: " << player.get_last_session_time() << "/" << player.get_session_time() << endl;
 
-	if (player.is_in_quest())
+	if (current_quest != 0 && current_quest != 1592474848 && current_quest != 3052339328)
 		ReadQuestMemory();
 }
 
@@ -269,7 +280,12 @@ int main()
 {
 	InitializeDiscord();
 	AttemptHook();
-	
+	questNames[252] = "Camp Crasher";
+	questNames[261] = "Snatch The Snatcher";
+
+	areaNames[101] = "Ancient Forest";
+	areaNames[102] = "Wildspire Waste";
+
 	while (true) {
 		waittime++;
 		updatetimer++;
