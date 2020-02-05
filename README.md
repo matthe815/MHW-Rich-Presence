@@ -5,7 +5,9 @@ Adds a detailed rich-presence to the game whilst you play.
 
 ## Installation
 Step 1. Download an exe from the releases tab.
+
 Step 2. Run it.
+
 Step 3. Done.
 
 ## Contributing
