@@ -241,13 +241,6 @@ void ReadMemory()
 
 	char hunter_name[20];
 
-
-	long long value;
-
-	ReadProcessMemory(mhw_handle, (LPCVOID)(0x70B69FE0+90), &value, sizeof(value), NULL);
-
-	std::cout << value << std::endl;
-
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0x90), &hunter_rank, sizeof(hunter_rank), NULL);
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0x50), &hunter_name, sizeof(hunter_name), NULL);
 
