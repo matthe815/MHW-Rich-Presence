@@ -1,10 +1,10 @@
 <div align="center">
   <h3>Monster Hunter World - Rich Presence</h3>
-  <subtitle>Adds detailed rich presence to a game without it!</subtitle><br/>
+  <subtitle>Adds detailed rich presence to a game without it!</subtitle><br/></br>
   <a href="https://discord.gg/wG826KK">
     <img src="https://discordapp.com/api/guilds/606926504424767488/embed.png">
   </a>
-</div>
+</div><br/>
 
 Adds a detailed Discord rich-presence to the game that updates in real-time whilst you play. (Iceborne Compatible)
 *May not be compatible with all updates immediately due to memory address changes with updates.*
