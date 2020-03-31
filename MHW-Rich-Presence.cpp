@@ -39,17 +39,12 @@ boolean checking = true;
 long long MHW_PTR = 0x140000000 + 0x04EA20A8;
 
 long long SESSION_TIME_OFFSET = 0x7FC2CA24;
-long long NAME_OFFSET = 0x6F77F210;
-long long QUEST_OFFSET = 0x1348E6748;
 
-long long SELECTED_QUEST = 0x5EEB8C28;
+long long START_INDEX = 0xA4100080;
+long long END_INDEX   = 0xA7100000;
 
-long long HR_OFFSET = 0x7FAD1628;
+long long BASE_ADDRESS;
 
-long long QUEST_PTR = 0x006C73E8;
-
-using namespace discord;
-using namespace std;
 
 ///
 // This generates a new core to display Rich Presence for use during the application's runtime.
@@ -64,20 +59,23 @@ void InitializeDiscord()
 ///
 void UpdateDiscord()
 {
+	std::cout << "Updating Discord" << std::endl;
+	std::cout << "Is in quest: " << player.is_in_quest();
+
 	discord::Activity activity{}; // A blank object to send to the Discord RPC.
 
 	///
 	// Generate and format strings for use in the Rich Presence.
 	///
-	std::string details = (player.is_in_session() ? "ONLINE" : "OFFLINE") + (string)" -- " + (player.is_in_quest() == true ? "In Quest" : (string)"Chillin' in the Gathering Hub");
-	std::string state = player.get_name() + " -- HR: " + to_string((int)player.get_hunter_rank());
+	std::string details = (player.is_in_session() ? "ONLINE" : "OFFLINE") + (std::string)" -- " + (player.is_in_quest() == true ? "In Quest" : (std::string)"Chillin' in the Gathering Hub");
+	std::string state = player.get_name() + " -- HR: " + std::to_string((int)player.get_hunter_rank());
 	std::string map = "";
 
 	///
 	// Apply the necessary assets based on the player's quest status.
 	///
 	if (player.is_in_quest() == TRUE) {
-		map = "map_" + to_string(quest.get_map_id());
+		map = "map_" + std::to_string(quest.get_map_id());
 
 		activity.GetAssets().SetSmallImage("quest");
 		activity.GetAssets().SetSmallText(questNames[quest.get_id()].c_str());
@@ -92,6 +90,7 @@ void UpdateDiscord()
 	activity.SetDetails(details.c_str());
 	activity.SetState(state.c_str());
 
+	
 	core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {});
 }
 
@@ -178,9 +177,9 @@ void Hook()
 	mhw_handle = OpenProcess(PROCESS_ALL_ACCESS, true, FindProcessId(process_name));
 
 	if (mhw_handle == NULL)
-		std::cout << "Failed to hook onto " << process_name << "!" << endl;
+		std::cout << "Failed to hook onto " << process_name << "!" << std::endl;
 	else
-		std::cout << "Successfully hooked onto " << process_name << "!" << endl;
+		std::cout << "Successfully hooked onto " << process_name << "!" << std::endl;
 
 	return;
 }
@@ -198,10 +197,10 @@ bool IsMHWRunning()
 ///
 void AttemptHook()
 {
-	std::cout << "Attempting to hook onto " << process_name << "..." << endl;
+	std::cout << "Attempting to hook onto " << process_name << "..." << std::endl;
 
 	if (IsMHWRunning() == false) {
-		std::cout << "Failed to hook onto " << process_name << "! Waiting for process..." << endl;
+		std::cout << "Failed to hook onto " << process_name << "! Waiting for process..." << std::endl;
 
 		while (checking) {
 			waittime++;
@@ -228,11 +227,6 @@ void ReadQuestMemory()
 
 	long long quest_memory_address;
 
-	ReadProcessMemory(mhw_handle, (LPCVOID)SELECTED_QUEST, &quest_memory_address, sizeof(quest_memory_address), NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)(quest_memory_address+0x70), &id, 4, NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)(quest_memory_address+0x84), &map_id, 4, NULL);
-
-	quest.set_data(id, map_id);
 }
 
 ///
@@ -240,25 +234,45 @@ void ReadQuestMemory()
 ///
 void ReadMemory()
 {
-	cout << (DWORD)HR_OFFSET;
-
-	float hunter_rank,
+	int hunter_rank,
 		  session_duration = 0;
 
 	long long current_quest = 0;
 
 	char hunter_name[20];
 
-	ReadProcessMemory(mhw_handle, (LPCVOID)HR_OFFSET, &hunter_rank, 4, NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)NAME_OFFSET, &hunter_name, sizeof(hunter_name), NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)SELECTED_QUEST, &current_quest, 4, NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)SESSION_TIME_OFFSET, &session_duration, sizeof(session_duration), NULL);
+
+	long long value;
+
+	ReadProcessMemory(mhw_handle, (LPCVOID)(0x70B69FE0+90), &value, sizeof(value), NULL);
+
+	std::cout << value << std::endl;
+
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0x90), &hunter_rank, sizeof(hunter_rank), NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0x50), &hunter_name, sizeof(hunter_name), NULL);
 
 	player.set_data(hunter_name != NULL ? hunter_name : "Cross", hunter_rank, session_duration, current_quest != 0);
-	cout << player.get_name() << " -- HR " << player.get_hunter_rank() << " >> " << "Quest: " << current_quest << " Last Session Ping/Current: " << player.get_last_session_time() << "/" << player.get_session_time() << endl;
+	std::cout << player.get_name() << " -- HR " << player.get_hunter_rank() << " >> " << "Quest: " << current_quest << " Last Session Ping/Current: " << player.get_last_session_time() << "/" << player.get_session_time() << std::endl;
 
 	if (current_quest != 0 && current_quest != 1592474848 && current_quest != 3052339328)
 		ReadQuestMemory();
+}
+
+///
+// Find the player memory address.
+///
+void FindPlayerIndex()
+{
+	for (long long address = START_INDEX; address < END_INDEX; address+=0x1000) {
+		int byteArray = 0;
+		ReadProcessMemory(mhw_handle, (LPCVOID)address, &byteArray, sizeof(byteArray), NULL);
+
+		if (byteArray == 1125346736) {
+			BASE_ADDRESS = address;
+			std::cout << "Found HR memory address" << std::endl;
+			break;
+		}
+	}
 }
 
 ///
@@ -267,7 +281,7 @@ void ReadMemory()
 void application_loop()
 {
 	loopnumber++;
-	cout << "Application Loop " << loopnumber << "\n" << endl;
+	std::cout << "Application Loop " << loopnumber << "\n" << std::endl;
 
 	ReadMemory();
 	::core->RunCallbacks();
@@ -280,6 +294,8 @@ int main()
 {
 	InitializeDiscord();
 	AttemptHook();
+	FindPlayerIndex();
+	
 	questNames[252] = "Camp Crasher";
 	questNames[261] = "Snatch The Snatcher";
 
@@ -288,15 +304,10 @@ int main()
 
 	while (true) {
 		waittime++;
-		updatetimer++;
 
 		if (waittime >= 2000000000) {
 			waittime = 0;
 			application_loop();
-		}
-
-		if (updatetimer >= 2500000000) {
-			updatetimer = 0;
 			UpdateDiscord();
 		}
 	}

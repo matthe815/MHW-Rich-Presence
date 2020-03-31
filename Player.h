@@ -5,19 +5,19 @@ class Player
 {
 	std::string hunter_name;
 
-	float hunter_rank;
-	float last_hunter_rank;
+	int hunter_rank=0;
+	int last_hunter_rank=0;
 
-	float session_time;
-	float last_session_time;
+	float session_time=0;
+	float last_session_time=0;
 
-	bool in_quest;
-	bool last_in_quest;
+	bool in_quest=0;
+	bool last_in_quest=0;
 
-	bool last_in_session;
+	bool last_in_session=0;
 
 public:
-	void set_data(std::string name, float hr, float current_session, bool is_quest)
+	void set_data(std::string name, int hr, float current_session, bool is_quest)
 	{
 		hunter_name = name;
 
@@ -38,7 +38,7 @@ public:
 		return hunter_name;
 	}
 
-	float get_last_hunter_rank()
+	int get_last_hunter_rank()
 	{
 		return last_hunter_rank;
 	}
@@ -48,7 +48,7 @@ public:
 		return last_session_time;
 	}
 
-	float get_hunter_rank()
+	int get_hunter_rank()
 	{
 		return hunter_rank;
 	}
