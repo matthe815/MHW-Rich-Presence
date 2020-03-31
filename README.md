@@ -1,7 +1,7 @@
 <div align="center">
   <br />
   <a href="https://discord.gg/wG826KK">
-    <img src="https://discordapp.com/assets/e4923594e694a21542a489471ecffa50.svg" width="150" height="70"/>
+    <img src="https://discordapp.com/api/guilds/606926504424767488/embed.png">
   </a>
 </div>
 
