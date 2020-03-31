@@ -1,8 +1,0 @@
-﻿  MHW-Rich-Presence.cpp
-V:\Projects\MHW-Rich-Presence\MHW-Rich-Presence.cpp(219,89): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
-  Generating code
-  1 of 1394 functions (<0.1%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    0 functions had inline decision re-evaluated but remain unchanged
-  Finished generating code
-  MHW-Rich-Presence.vcxproj -> V:\Projects\MHW-Rich-Presence\x64\Release\MHW-Rich-Presence.exe
