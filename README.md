@@ -6,7 +6,8 @@
   </a>
 </div><br/>
 
-Adds a detailed Discord rich-presence to the game that updates in real-time whilst you play. (Iceborne Compatible)
+## Details
+Adds a detailed Discord rich-presence to the game that updates in real-time whilst you play. (Iceborne Compatible)<br>
 *May not be compatible with all updates immediately due to memory address changes with updates.*
 
 ![Preview](https://cdn.deltakiruentertainment.com/images/preview.png "Working preview")
