@@ -12,17 +12,23 @@ Adds a detailed Discord rich-presence to the game that updates in real-time whil
 
 ![Preview](https://cdn.deltakiruentertainment.com/images/preview.png "Working preview")
 
+
 ## Installation
-Step 1. Download the latest version of the application from the releases page.
-Step 2. Extract it to any folder on your file system.
-Step 3. Double-click the application to open it.
-Step 4. Enjoy!
+Step 1. Download the latest version of the application from the releases page.<br/>
+Step 2. Extract it to any folder on your file system.<br/>
+Step 3. Double-click the application to open it.<br/>
+Step 4. Enjoy!<br/>
+
+Note: Currently only works mid-game (with a save already loaded) I'm working to fix this.
+
 
 ## How to Run Automatically Upon Start-Up
 > To be continued.
 
+
 ## Contributing
 If you'd like to contribute to this project, feel free to fork it and make a push request with any changes that need be made. I'm always looking for help.
+
 
 ## Contact Us
 Have a suggestion or just want to talk with the community and or developer? Please join the Discord!
