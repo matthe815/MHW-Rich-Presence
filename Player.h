@@ -1,28 +1,36 @@
 #pragma once
 #include <string>
 
+//
+// The basic player data is housed within this.
+//
 class Player
 {
 	std::string hunter_name;
 
-	int hunter_rank=0;
-	int last_hunter_rank=0;
+	int hunter_rank = 0,
+		last_hunter_rank = 0,
+		master_rank = 0,
+		last_master_rank = 0;
 
-	float session_time=0;
-	float last_session_time=0;
+	float session_time = 0,
+		last_session_time = 0;
 
-	bool in_quest=0;
-	bool last_in_quest=0;
+	bool in_quest = 0,
+		last_in_quest = 0;
 
-	bool last_in_session=0;
+	bool last_in_session = 0;
 
 public:
-	void set_data(std::string name, int hr, float current_session, bool is_quest)
+	void set_data(std::string name, int hr, int mr, float current_session, bool is_quest)
 	{
 		hunter_name = name;
 
 		last_hunter_rank = get_hunter_rank();
 		hunter_rank = hr;
+
+		last_master_rank = get_last_master_rank();
+		master_rank = mr;
 
 		last_in_session = is_in_session();
 
@@ -43,6 +51,11 @@ public:
 		return last_hunter_rank;
 	}
 
+	int get_last_master_rank()
+	{
+		return last_master_rank;
+	}
+
 	float get_last_session_time()
 	{
 		return last_session_time;
@@ -51,6 +64,11 @@ public:
 	int get_hunter_rank()
 	{
 		return hunter_rank;
+	}
+
+	int get_master_rank()
+	{
+		return master_rank;
 	}
 
 	float get_session_time()

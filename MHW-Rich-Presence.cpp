@@ -13,11 +13,12 @@ std::unordered_map<int, std::string> questNames;
 std::unordered_map<int, std::string> areaNames;
 
 ///
-// Application tick management.
+// Application management.
 ///
-int waittime = 0;
-int updatetimer = 0;
-int loopnumber = 0;
+int waittime    = 0
+   ,updatetimer = 0
+   ,loopnumber  = 0
+   ,process_id;
 
 ///
 // Storage for retrieved memory values.
@@ -29,22 +30,16 @@ Player player{};
 // Process information
 ///
 LPCWSTR process_name = L"MonsterHunterWorld.exe";
-int process_id;
 HANDLE mhw_handle = NULL;
 boolean checking = true;
 
 ///
 // Pointer information
 ///
-long long MHW_PTR = 0x140000000 + 0x04EA20A8;
-
-long long SESSION_TIME_OFFSET = 0x7FC2CA24;
-
-long long START_INDEX = 0xA4100080;
-long long END_INDEX   = 0xA7100000;
-
-long long BASE_ADDRESS;
-
+long long MHW_PTR     = 0x140000000 + 0x04EA20A8
+	     ,START_INDEX = 0xA4100080
+		 ,END_INDEX   = 0xA7100000
+		 ,BASE_ADDRESS;
 
 ///
 // This generates a new core to display Rich Presence for use during the application's runtime.
@@ -60,16 +55,16 @@ void InitializeDiscord()
 void UpdateDiscord()
 {
 	std::cout << "Updating Discord" << std::endl;
-	std::cout << "Is in quest: " << player.is_in_quest();
+	std::cout << "Is in quest: " << player.is_in_quest() << std::endl;
 
 	discord::Activity activity{}; // A blank object to send to the Discord RPC.
 
 	///
 	// Generate and format strings for use in the Rich Presence.
 	///
-	std::string details = (player.is_in_session() ? "ONLINE" : "OFFLINE") + (std::string)" -- " + (player.is_in_quest() == true ? "In Quest" : (std::string)"Chillin' in the Gathering Hub");
-	std::string state = player.get_name() + " -- HR: " + std::to_string((int)player.get_hunter_rank());
-	std::string map = "";
+	std::string details = (player.is_in_quest() == true ? "In Quest" : (std::string)"Chillin' in the Hub");
+	std::string state   = player.get_name() + " -- HR/MR: " + std::to_string((int)player.get_hunter_rank()) + "/" + std::to_string((int)player.get_master_rank());
+	std::string map     = "";
 
 	///
 	// Apply the necessary assets based on the player's quest status.
@@ -82,7 +77,7 @@ void UpdateDiscord()
 	}
 
 	activity.GetAssets().SetLargeImage(map != "" ? map.c_str() : "astera");
-	activity.GetAssets().SetLargeText(map != "" ? areaNames[quest.get_map_id()].c_str() : "In Astera");
+	activity.GetAssets().SetLargeText(map  != "" ? areaNames[quest.get_map_id()].c_str() : "In Astera");
 
 	///
 	// Apply the state and details to the activity object.
@@ -90,8 +85,7 @@ void UpdateDiscord()
 	activity.SetDetails(details.c_str());
 	activity.SetState(state.c_str());
 
-	
-	core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {});
+	core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {}); // Update the Discord status.
 }
 
 ///
@@ -173,15 +167,9 @@ DWORD_PTR GetProcessBaseAddress()
 ///
 void Hook()
 {
-	checking = false;
 	mhw_handle = OpenProcess(PROCESS_ALL_ACCESS, true, FindProcessId(process_name));
-
-	if (mhw_handle == NULL)
-		std::cout << "Failed to hook onto " << process_name << "!" << std::endl;
-	else
-		std::cout << "Successfully hooked onto " << process_name << "!" << std::endl;
-
-	return;
+	std::cout << (mhw_handle == NULL ? "Failed to hook onto " : "Successfully hooked onto ") << process_name << "!" << std::endl;
+	checking = false; // Tell the system that it's not searching anymore.
 }
 
 ///
@@ -218,24 +206,13 @@ void AttemptHook()
 }
 
 ///
-// Read the memory of the player's selected quest.
-///
-void ReadQuestMemory()
-{
-	int id,
-		map_id;
-
-	long long quest_memory_address;
-
-}
-
-///
 // Read the memory of the current player, and store the information within the player object.
 ///
 void ReadMemory()
 {
 	int hunter_rank,
-		  session_duration = 0;
+		master_rank,
+		session_duration = 0;
 
 	long long current_quest = 0;
 
@@ -243,12 +220,10 @@ void ReadMemory()
 
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0x90), &hunter_rank, sizeof(hunter_rank), NULL);
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0x50), &hunter_name, sizeof(hunter_name), NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0xD4), &master_rank, sizeof(master_rank), NULL);
 
-	player.set_data(hunter_name != NULL ? hunter_name : "Cross", hunter_rank, session_duration, current_quest != 0);
-	std::cout << player.get_name() << " -- HR " << player.get_hunter_rank() << " >> " << "Quest: " << current_quest << " Last Session Ping/Current: " << player.get_last_session_time() << "/" << player.get_session_time() << std::endl;
-
-	if (current_quest != 0 && current_quest != 1592474848 && current_quest != 3052339328)
-		ReadQuestMemory();
+	player.set_data(hunter_name != NULL ? hunter_name : "Cross", hunter_rank, master_rank, session_duration, current_quest != 0);
+	std::cout << player.get_name() << " -- HR/MR " << player.get_hunter_rank() << "/" << player.get_master_rank() << " >> " << "Quest: " << current_quest << " Last Session Ping/Current: " << player.get_last_session_time() << "/" << player.get_session_time() << std::endl;
 }
 
 ///
@@ -262,7 +237,7 @@ void FindPlayerIndex()
 
 		if (byteArray == 1125346736) {
 			BASE_ADDRESS = address;
-			std::cout << "Found HR memory address" << std::endl;
+			std::cout << "Found player memory address" << std::endl;
 			break;
 		}
 	}
@@ -271,7 +246,7 @@ void FindPlayerIndex()
 ///
 // This is a loop that fires every couple seconds.
 ///
-void application_loop()
+void ApplicationLoop()
 {
 	loopnumber++;
 	std::cout << "Application Loop " << loopnumber << "\n" << std::endl;
@@ -300,7 +275,7 @@ int main()
 
 		if (waittime >= 2000000000) {
 			waittime = 0;
-			application_loop();
+			ApplicationLoop();
 			UpdateDiscord();
 		}
 	}
