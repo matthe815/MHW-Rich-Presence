@@ -8,9 +8,10 @@
 #include "QuestData.h"
 #include "Player.h"
 
+///
+// Discord.
+///
 discord::Core* core{};
-std::unordered_map<int, std::string> questNames;
-std::unordered_map<int, std::string> areaNames;
 
 ///
 // Application management.
@@ -67,17 +68,10 @@ void UpdateDiscord()
 	std::string map     = "";
 
 	///
-	// Apply the necessary assets based on the player's quest status.
+	// Apply the image assets.
 	///
-	if (player.is_in_quest() == TRUE) {
-		map = "map_" + std::to_string(quest.get_map_id());
-
-		activity.GetAssets().SetSmallImage("quest");
-		activity.GetAssets().SetSmallText(questNames[quest.get_id()].c_str());
-	}
-
-	activity.GetAssets().SetLargeImage(map != "" ? map.c_str() : "astera");
-	activity.GetAssets().SetLargeText(map  != "" ? areaNames[quest.get_map_id()].c_str() : "In Astera");
+	activity.GetAssets().SetLargeImage("astera");
+	activity.GetAssets().SetLargeText("In Astera");
 
 	///
 	// Apply the state and details to the activity object.
@@ -217,7 +211,7 @@ void ReadMemory()
 	long long current_quest = 0;
 
 	char hunter_name[20];
-
+	
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0x90), &hunter_rank, sizeof(hunter_rank), NULL); // Obtain memory value for HR.
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0x50), &hunter_name, sizeof(hunter_name), NULL); // Obtain memory value for name.
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0xD4), &master_rank, sizeof(master_rank), NULL); // Obtain memory value for MR.
@@ -263,20 +257,10 @@ int main()
 	InitializeDiscord();
 	AttemptHook();
 	FindPlayerIndex();
-	
-	questNames[252] = "Camp Crasher";
-	questNames[261] = "Snatch The Snatcher";
-
-	areaNames[101] = "Ancient Forest";
-	areaNames[102] = "Wildspire Waste";
 
 	while (true) {
-		waittime++;
-
-		if (waittime >= 2000000000) {
-			waittime = 0;
-			ApplicationLoop();
-			UpdateDiscord();
-		}
+		Sleep(2000);
+		ApplicationLoop();
+		UpdateDiscord();
 	}
 }
