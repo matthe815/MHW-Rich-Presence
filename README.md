@@ -19,9 +19,6 @@ Step 2. Extract it to any folder on your file system.<br/>
 Step 3. Double-click the application to open it.<br/>
 Step 4. Enjoy!<br/>
 
-Note: Currently only works mid-game (with a save already loaded) I'm working to fix this.
-
-
 ## How to Run Automatically Upon Start-Up
 > To be continued.
 
