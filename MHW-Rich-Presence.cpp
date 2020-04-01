@@ -16,10 +16,10 @@ discord::Core* core{};
 ///
 // Application management.
 ///
-int waittime    = 0
-   ,updatetimer = 0
-   ,loopnumber  = 0
-   ,process_id;
+int waittime = 0
+, updatetimer = 0
+, loopnumber = 0
+, process_id;
 
 ///
 // Storage for retrieved memory values.
@@ -37,10 +37,10 @@ boolean checking = true;
 ///
 // Pointer information
 ///
-long long MHW_PTR     = 0x140000000 + 0x04EA20A8
-	     ,START_INDEX = 0x64100080
-		 ,END_INDEX   = 0xA7100000
-		 ,BASE_ADDRESS = 0;
+long long MHW_PTR = 0x140000000 + 0x04EA20A8
+, START_INDEX = 0x10000080
+, END_INDEX = 0xFFFF0080
+, BASE_ADDRESS = 0;
 
 ///
 // This generates a new core to display Rich Presence for use during the application's runtime.
@@ -66,8 +66,8 @@ void UpdateDiscord()
 	// Generate and format strings for use in the Rich Presence.
 	///
 	std::string details = (player.is_in_quest() == true ? "In Quest" : (std::string)"Chillin' in the Hub");
-	std::string state   = player.get_name() + " -- HR/MR: " + std::to_string((int)player.get_hunter_rank()) + "/" + std::to_string((int)player.get_master_rank());
-	std::string map     = "";
+	std::string state = "HR/MR: " + std::to_string((int)player.get_hunter_rank()) + "/" + std::to_string((int)player.get_master_rank());
+	std::string map = "";
 
 	///
 	// Apply the image assets.
@@ -164,7 +164,7 @@ DWORD_PTR GetProcessBaseAddress()
 void Hook()
 {
 	mhw_handle = OpenProcess(PROCESS_ALL_ACCESS, true, FindProcessId(process_name));
-	checking   = false; // Tell the system that it's not searching anymore.
+	checking = false; // Tell the system that it's not searching anymore.
 
 	std::cout << (mhw_handle == NULL ? "Failed to hook onto " : "Successfully hooked onto ") << process_name << "!" << std::endl;
 }
@@ -188,14 +188,10 @@ void AttemptHook()
 		std::cout << "Failed to hook onto " << process_name << "! Waiting for process..." << std::endl;
 
 		while (checking) {
-			waittime++;
+			Sleep(1000);
 
-			if (waittime >= 10000000) {
-				waittime = 0;
-
-				if (IsMHWRunning() == true)
-					Hook();
-			}
+			if (IsMHWRunning() == true)
+				Hook();
 		}
 	}
 	else
@@ -214,10 +210,10 @@ void ReadMemory()
 	long long current_quest = 0;
 
 	char hunter_name[20];
-	
-	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0x90), &hunter_rank, sizeof(hunter_rank), NULL); // Obtain memory value for HR.
-	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0x50), &hunter_name, sizeof(hunter_name), NULL); // Obtain memory value for name.
-	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0xD4), &master_rank, sizeof(master_rank), NULL); // Obtain memory value for MR.
+
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x90), &hunter_rank, sizeof(hunter_rank), NULL); // Obtain memory value for HR.
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x50), &hunter_name, sizeof(hunter_name), NULL); // Obtain memory value for name.
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0xD4), &master_rank, sizeof(master_rank), NULL); // Obtain memory value for MR.
 
 	player.set_data(hunter_name != NULL ? hunter_name : "Cross", hunter_rank, master_rank, session_duration, current_quest != 0);
 }
@@ -227,7 +223,7 @@ void ReadMemory()
 ///
 void FindPlayerIndex()
 {
-	for (long long address = START_INDEX; address < END_INDEX; address+=0x1000) {
+	for (long long address = START_INDEX; address < END_INDEX; address += 0x1000) {
 		int byteArray = 0;
 		ReadProcessMemory(mhw_handle, (LPCVOID)address, &byteArray, sizeof(byteArray), NULL);
 
@@ -235,7 +231,7 @@ void FindPlayerIndex()
 		if (byteArray == 1125346736) {
 			// Secondary check
 			int byteArray2 = 0;
-			ReadProcessMemory(mhw_handle, (LPCVOID)(address+0x8), &byteArray2, sizeof(byteArray), NULL);
+			ReadProcessMemory(mhw_handle, (LPCVOID)(address + 0x8), &byteArray2, sizeof(byteArray), NULL);
 
 			if (byteArray2 != -1)
 				continue;
@@ -247,9 +243,19 @@ void FindPlayerIndex()
 			break;
 		}
 	}
-	
+
 	if (BASE_ADDRESS == 0)
 		std::cout << "We were unable to find the memory address associated with the player." << std::endl;
+}
+
+boolean IsStillRunning()
+{
+	DWORD status = WaitForSingleObject(mhw_handle, 1);
+
+	if (status == WAIT_OBJECT_0) // It's closed
+		return false;
+	else
+		return true;
 }
 
 ///
@@ -258,6 +264,13 @@ void FindPlayerIndex()
 void ApplicationLoop()
 {
 	loopnumber++;
+
+	if (!IsStillRunning()) {
+		BASE_ADDRESS = 0;
+		checking = true;
+		AttemptHook();
+		return;
+	}
 
 	ReadMemory();
 	::core->RunCallbacks();
@@ -276,7 +289,13 @@ int main()
 
 	while (true) {
 		Sleep(2000);
-		ApplicationLoop();
-		UpdateDiscord();
+
+		if (checking == false) {
+			if (BASE_ADDRESS == 0)
+				FindPlayerIndex();
+
+			ApplicationLoop();
+			UpdateDiscord();
+		}
 	}
 }
