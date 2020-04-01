@@ -1,0 +1,28 @@
+{
+	"locale": "en_US.UTF-8",
+	"application_id": 666709854622187570,
+	
+	"APP_DATA": "Monster Hunter World: Rich Presence > v",
+	"CLOSE_DISCLAIMER": "You do not need to close this application at any point, it'll hide itself until Monster Hunter is opened.",
+
+	"PLAYER_ADDRESS_FOUND": "Found player memory address",
+	"PLAYER_ADDRESS_LOCATION": "Current player memory address: ",
+	"PLAYER_ADDRESS_VALUE": "Current player memory address value: ",
+	"PLAYER_ADDRESS_NOT_FOUND": "We were unable to find the memory address associated with the player.",
+	
+	"QUEST_ADDRESS_FOUND": "Found quest memory address",
+	"QUEST_ADDRESS_LOCATION": "Current quest memory address: ",
+	"QUEST_ADDRESS_VALUE": "Current quest memory address value: ",
+	"QUEST_ADDRESS_NOT_FOUND": "We were unable to find the quest address associated with the player.",
+	
+	"HOOK_ATTEMPT": "Attempting to hook onto application: ",
+	"WAITING_FOR_HOOK": "Failed to hook onto the application! Waiting for process ",
+	
+	"SUCCESSFUL_HOOK": "Successfully hooked onto ",
+	"FAILED_HOOK": "Failed to hook onto ",
+	
+	"IN_HUB": "Chillin' In The Hub",
+	"IN_QUEST": "In Quest",
+
+	"IN_ASTERA": "At Astera"
+}

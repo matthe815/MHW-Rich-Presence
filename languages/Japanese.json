@@ -1,0 +1,23 @@
+{
+	"locale": "ja_JP.UTF-8",
+	"application_id": 695009812710162503,
+	
+	"APP_DATA": "モンスターハンターワルドー: Rich Presence > v",
+	"CLOSE_DISCLAIMER": "You do not need to close this application at any point, it'll hide itself until Monster Hunter is opened.",
+
+	"PLAYER_ADDRESS_FOUND": "プレイヤーのメモリーアヅレスを見つけました",
+	"PLAYER_ADDRESS_LOCATION": "プレイヤーのメモリーアヅレス: ",
+	"PLAYER_ADDRESS_VALUE": "プレイヤーのメモリーアヅレスの値: ",
+	"PLAYER_ADDRESS_NOT_FOUND": "プレイヤーのメモリーアヅレスを見つけてできない",
+	
+	"HOOK_ATTEMPT": "アプリのフックを試みっている: ",
+	"WAITING_FOR_HOOK": "アプリのフックをできない、待っている： ",
+	
+	"SUCCESSFUL_HOOK": "フックをできました ",
+	"FAILED_HOOK": "フックをできない ",
+
+	"IN_HUB": "ハブで",
+	"IN_QUEST": "クエストをしている",
+
+	"IN_ASTERA": "アステラで"
+}
