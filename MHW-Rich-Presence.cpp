@@ -7,6 +7,10 @@
 #include <string>
 #include "QuestData.h"
 #include "Player.h"
+#include <clocale>
+#include "rapidjson/document.h"
+#include <fstream>
+#include "rapidjson/filereadstream.h"
 
 ///
 // Discord.
@@ -35,19 +39,32 @@ HANDLE mhw_handle = NULL;
 boolean checking = true;
 
 ///
+// Application settings.
+///
+std::string version = "0.5.3";
+std::string language = "English";
+rapidjson::Document languageData;
+int saveSlot = 1;
+
+///
 // Pointer information
 ///
 long long MHW_PTR = 0x140000000 + 0x04EA20A8
 , START_INDEX = 0x10000080
 , END_INDEX = 0xFFFF0080
-, BASE_ADDRESS = 0;
+, QUEST_START_INDEX = 0x10000F20
+, QUEST_END_INDEX = 0xFFFFFFFF
+, BASE_ADDRESS = 0
+, QUEST_ADDRESS = 0;
+
+boolean displayName = false; // Whether or not to display the player's name.
 
 ///
 // This generates a new core to display Rich Presence for use during the application's runtime.
 ///
 void InitializeDiscord()
 {
-	discord::Core::Create(666709854622187570, DiscordCreateFlags_Default, &core);
+	discord::Core::Create(languageData["application_id"].GetInt64(), DiscordCreateFlags_Default, &core);
 }
 
 ///
@@ -58,22 +75,22 @@ void UpdateDiscord()
 	if (player.get_last_hunter_rank() == player.get_hunter_rank() && player.get_last_master_rank() == player.get_master_rank()) // Stop if there's identical data.
 		return;
 
-	std::cout << player.get_name() << " -- HR/MR " << player.get_hunter_rank() << "/" << player.get_master_rank() << " >> " << " Last Session Ping/Current: " << player.get_last_session_time() << "/" << player.get_session_time() << std::endl;
+	std::cout << player.get_name() << " -- HR/MR " << player.get_hunter_rank() << "/" << player.get_master_rank() << std::endl;
 
 	discord::Activity activity{}; // A blank object to send to the Discord RPC.
 
 	///
 	// Generate and format strings for use in the Rich Presence.
 	///
-	std::string details = (player.is_in_quest() == true ? "In Quest" : (std::string)"Chillin' in the Hub");
-	std::string state = "HR/MR: " + std::to_string((int)player.get_hunter_rank()) + "/" + std::to_string((int)player.get_master_rank());
+	std::string details = (player.is_in_quest() == true ? languageData["IN_QUEST"].GetString() : languageData["IN_HUB"].GetString());
+	std::string state = (displayName ? player.get_name() + " -- "  : "") + "HR/MR: " + std::to_string((int)player.get_hunter_rank()) + "/" + std::to_string((int)player.get_master_rank());
 	std::string map = "";
 
 	///
 	// Apply the image assets.
 	///
 	activity.GetAssets().SetLargeImage("astera");
-	activity.GetAssets().SetLargeText("In Astera");
+	activity.GetAssets().SetLargeText(languageData["IN_ASTERA"].GetString());
 
 	///
 	// Apply the state and details to the activity object.
@@ -128,9 +145,7 @@ DWORD FindProcessId(const std::wstring& processName)
 ///
 DWORD_PTR GetProcessBaseAddress()
 {
-	// This structure contains lots of goodies about a module
 	MODULEENTRY32 ModuleEntry = { 0 };
-	// Grab a snapshot of all the modules in the specified process
 	HANDLE SnapShot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, process_id);
 
 	if (!SnapShot)
@@ -139,21 +154,17 @@ DWORD_PTR GetProcessBaseAddress()
 	// You have to initialize the size, otherwise it will not work
 	ModuleEntry.dwSize = sizeof(ModuleEntry);
 
-	// Get the first module in the process
 	if (!Module32First(SnapShot, &ModuleEntry))
 		return NULL;
 
 	do {
 		// Check if the module name matches the one we're looking for
 		if (!wcscmp(ModuleEntry.szModule, process_name)) {
-			// If it does, close the snapshot handle and return the base address
 			CloseHandle(SnapShot);
 			return (DWORD_PTR)ModuleEntry.modBaseAddr;
 		}
-		// Grab the next module in the snapshot
 	} while (Module32Next(SnapShot, &ModuleEntry));
 
-	// We couldn't find the specified module, so return NULL
 	CloseHandle(SnapShot);
 	return NULL;
 }
@@ -166,7 +177,7 @@ void Hook()
 	mhw_handle = OpenProcess(PROCESS_ALL_ACCESS, true, FindProcessId(process_name));
 	checking = false; // Tell the system that it's not searching anymore.
 
-	std::cout << (mhw_handle == NULL ? "Failed to hook onto " : "Successfully hooked onto ") << process_name << "!" << std::endl;
+	std::cout << (mhw_handle == NULL ? languageData["FAILED_HOOK"].GetString() : languageData["SUCCESSFUL_HOOK"].GetString()) << process_name << "!" << std::endl;
 }
 
 ///
@@ -182,10 +193,10 @@ bool IsMHWRunning()
 ///
 void AttemptHook()
 {
-	std::cout << "Attempting to hook onto " << process_name << "..." << std::endl;
+	std::cout << languageData["HOOK_ATTEMPT"].GetString() << process_name << std::endl;
 
 	if (IsMHWRunning() == false) {
-		std::cout << "Failed to hook onto " << process_name << "! Waiting for process..." << std::endl;
+		std::cout << languageData["WAITING_FOR_HOOK"].GetString() << process_name << std::endl;
 
 		while (checking) {
 			Sleep(1000);
@@ -223,6 +234,8 @@ void ReadMemory()
 ///
 void FindPlayerIndex()
 {
+	std::cout << "Save Slot: " << saveSlot << std::endl;
+
 	for (long long address = START_INDEX; address < END_INDEX; address += 0x1000) {
 		int byteArray = 0;
 		ReadProcessMemory(mhw_handle, (LPCVOID)address, &byteArray, sizeof(byteArray), NULL);
@@ -237,15 +250,49 @@ void FindPlayerIndex()
 				continue;
 
 			BASE_ADDRESS = address;
-			std::cout << "Found player memory address" << std::endl;
-			std::cout << "Current player memory address: " << (LPCVOID)BASE_ADDRESS << std::endl;
-			std::cout << "Current player memory address value: " << byteArray << std::endl;
+
+			if (saveSlot == 2)
+				BASE_ADDRESS += 0x27E9F0;
+			else if (saveSlot == 3)
+				BASE_ADDRESS += 0x4FD3E0;
+
+			std::cout << languageData["PLAYER_ADDRESS_FOUND"].GetString() << std::endl;
+			std::cout << languageData["PLAYER_ADDRESS_LOCATION"].GetString() << (LPCVOID)BASE_ADDRESS << std::endl;
+			std::cout << languageData["PLAYER_ADDRESS_VALUE"].GetString() << byteArray << std::endl;
 			break;
 		}
 	}
 
 	if (BASE_ADDRESS == 0)
-		std::cout << "We were unable to find the memory address associated with the player." << std::endl;
+		std::cout << languageData["PLAYER_ADDRESS_NOT_FOUND"].GetString() << std::endl;
+}
+
+///
+// Find the header for quests.
+///
+void FindQuestIndex()
+{
+	for (long long address = QUEST_START_INDEX; address < QUEST_END_INDEX; address += 0x1000) {
+		int byteArray = 0;
+		ReadProcessMemory(mhw_handle, (LPCVOID)address, &byteArray, sizeof(byteArray), NULL);
+
+		// Base check
+		if (byteArray == 1125167688) {
+			// Secondary check
+			int byteArray2 = 0;
+			ReadProcessMemory(mhw_handle, (LPCVOID)(address + 0x1), &byteArray2, sizeof(byteArray), NULL);
+
+			QUEST_ADDRESS = address;
+
+			std::cout << languageData["QUEST_ADDRESS_FOUND"].GetString() << std::endl;
+			std::cout << languageData["QUEST_ADDRESS_LOCATION"].GetString() << (LPCVOID)QUEST_ADDRESS << std::endl;
+			std::cout << languageData["QUEST_ADDRESS_VALUE"].GetString() << byteArray << std::endl;
+			break;
+		}
+	}
+
+	if (BASE_ADDRESS == 0)
+		std::cout << languageData["QUEST_ADDRESS_NOT_FOUND"].GetString() << std::endl;
 }
 
 boolean IsStillRunning()
@@ -277,15 +324,68 @@ void ApplicationLoop()
 }
 
 ///
+// Load the user's config.
+///
+void ReadConfig()
+{
+	std::cout << "Loading config..." << std::endl;
+	FILE* fp = fopen("config.json", "rb");
+	
+	char readBuffer[65536];
+	rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+
+	rapidjson::Document d;
+	d.ParseStream(is);
+
+	fclose(fp);
+
+	displayName = d["displayName"].GetBool();
+	language = d["language"].GetString();
+	saveSlot = d["saveSlot"].GetInt();
+
+	std::cout << "Config loaded!" << std::endl;
+}
+
+///
+// Load the selected language.
+///
+void LoadLanguage()
+{
+	std::cout << "Loading language..." << std::endl;
+
+	FILE* fp = fopen(language.c_str(), "rb");
+
+	char readBuffer[65536];
+	rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+	languageData.ParseStream(is);
+	fclose(fp);
+	std::setlocale(LC_ALL, languageData["locale"].GetString());
+	
+	std::cout << language + " loaded!" << std::endl;
+}
+
+///
 // Initialize Discord, attempt to hook the game, and begin the application loop.
 ///
 int main()
 {
-	std::cout << "This is a debug copy of Monster Hunter World Rich Presence, please only use this for debugging purposes." << std::endl;
+	ReadConfig();
+	LoadLanguage();
+
+	std::cout << "----------------------------------------" << std::endl;
+
+	std::cout << "" << std::endl;
+	std::cout << languageData["APP_DATA"].GetString() << version << std::endl;
+	std::cout << languageData["CLOSE_DISCLAIMER"].GetString() << std::endl;
+	std::cout << "" << std::endl;
+
+	std::cout << "-----------------------------------------" << std::endl;
+	std::cout << "" << std::endl;
 
 	InitializeDiscord();
 	AttemptHook();
 	FindPlayerIndex();
+	FindQuestIndex();
 
 	while (true) {
 		Sleep(2000);
