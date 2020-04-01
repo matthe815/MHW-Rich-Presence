@@ -29,7 +29,7 @@ public:
 		last_hunter_rank = get_hunter_rank();
 		hunter_rank = hr;
 
-		last_master_rank = get_last_master_rank();
+		last_master_rank = get_master_rank();
 		master_rank = mr;
 
 		last_in_session = is_in_session();
