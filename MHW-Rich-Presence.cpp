@@ -38,9 +38,9 @@ boolean checking = true;
 // Pointer information
 ///
 long long MHW_PTR     = 0x140000000 + 0x04EA20A8
-	     ,START_INDEX = 0xA4100080
+	     ,START_INDEX = 0x64100080
 		 ,END_INDEX   = 0xA7100000
-		 ,BASE_ADDRESS;
+		 ,BASE_ADDRESS = 0;
 
 ///
 // This generates a new core to display Rich Presence for use during the application's runtime.
@@ -55,8 +55,10 @@ void InitializeDiscord()
 ///
 void UpdateDiscord()
 {
-	std::cout << "Updating Discord" << std::endl;
-	std::cout << "Is in quest: " << player.is_in_quest() << std::endl;
+	if (player.get_last_hunter_rank() == player.get_hunter_rank() && player.get_last_master_rank() == player.get_master_rank()) // Stop if there's identical data.
+		return;
+
+	std::cout << player.get_name() << " -- HR/MR " << player.get_hunter_rank() << "/" << player.get_master_rank() << " >> " << " Last Session Ping/Current: " << player.get_last_session_time() << "/" << player.get_session_time() << std::endl;
 
 	discord::Activity activity{}; // A blank object to send to the Discord RPC.
 
@@ -162,8 +164,9 @@ DWORD_PTR GetProcessBaseAddress()
 void Hook()
 {
 	mhw_handle = OpenProcess(PROCESS_ALL_ACCESS, true, FindProcessId(process_name));
+	checking   = false; // Tell the system that it's not searching anymore.
+
 	std::cout << (mhw_handle == NULL ? "Failed to hook onto " : "Successfully hooked onto ") << process_name << "!" << std::endl;
-	checking = false; // Tell the system that it's not searching anymore.
 }
 
 ///
@@ -217,7 +220,6 @@ void ReadMemory()
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS+0xD4), &master_rank, sizeof(master_rank), NULL); // Obtain memory value for MR.
 
 	player.set_data(hunter_name != NULL ? hunter_name : "Cross", hunter_rank, master_rank, session_duration, current_quest != 0);
-	std::cout << player.get_name() << " -- HR/MR " << player.get_hunter_rank() << "/" << player.get_master_rank() << " >> " << "Quest: " << current_quest << " Last Session Ping/Current: " << player.get_last_session_time() << "/" << player.get_session_time() << std::endl;
 }
 
 ///
@@ -229,12 +231,25 @@ void FindPlayerIndex()
 		int byteArray = 0;
 		ReadProcessMemory(mhw_handle, (LPCVOID)address, &byteArray, sizeof(byteArray), NULL);
 
+		// Base check
 		if (byteArray == 1125346736) {
+			// Secondary check
+			int byteArray2 = 0;
+			ReadProcessMemory(mhw_handle, (LPCVOID)(address+0x8), &byteArray2, sizeof(byteArray), NULL);
+
+			if (byteArray2 != -1)
+				continue;
+
 			BASE_ADDRESS = address;
 			std::cout << "Found player memory address" << std::endl;
+			std::cout << "Current player memory address: " << (LPCVOID)BASE_ADDRESS << std::endl;
+			std::cout << "Current player memory address value: " << byteArray << std::endl;
 			break;
 		}
 	}
+	
+	if (BASE_ADDRESS == 0)
+		std::cout << "We were unable to find the memory address associated with the player." << std::endl;
 }
 
 ///
@@ -243,7 +258,6 @@ void FindPlayerIndex()
 void ApplicationLoop()
 {
 	loopnumber++;
-	std::cout << "Application Loop " << loopnumber << "\n" << std::endl;
 
 	ReadMemory();
 	::core->RunCallbacks();
@@ -254,6 +268,8 @@ void ApplicationLoop()
 ///
 int main()
 {
+	std::cout << "This is a debug copy of Monster Hunter World Rich Presence, please only use this for debugging purposes." << std::endl;
+
 	InitializeDiscord();
 	AttemptHook();
 	FindPlayerIndex();
