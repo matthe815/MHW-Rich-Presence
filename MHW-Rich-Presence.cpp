@@ -42,6 +42,8 @@ std::string questNames[512];
 LPCWSTR process_name = L"MonsterHunterWorld.exe";
 HANDLE mhw_handle = NULL;
 boolean checking = true;
+boolean last_quest_status = false;
+boolean quest_status = false;
 
 ///
 // Application settings.
@@ -59,9 +61,12 @@ long long MHW_PTR = 0x140000000 + 0x04EA20A8
 , START_INDEX = 0x10000080
 , END_INDEX = 0xFFFF0080
 , QUEST_START_INDEX = 0x10000F20
-, QUEST_END_INDEX = 0xFFFFFFFF
+, QUEST_END_INDEX = 0xF0000000
+, CHECK_START_INDEX = 0x00000080
+, CHECK_END_INDEX = 0x20000000
 , BASE_ADDRESS = 0
-, QUEST_ADDRESS = 0;
+, QUEST_ADDRESS = 0
+, CHECK_ADDRESS = 0;
 
 boolean displayName = false; // Whether or not to display the player's name.
 
@@ -74,31 +79,46 @@ void InitializeDiscord()
 }
 
 ///
+// Verify the player is ACTUALLY in a quest.
+///
+void IsActuallyInQuest()
+{
+	int actual_map = 0;
+	last_quest_status = quest_status;
+
+	ReadProcessMemory(mhw_handle, (LPCVOID)(CHECK_ADDRESS + 0x27C), &actual_map, sizeof(2), NULL);
+
+	quest_status = actual_map != 0;
+}
+
+
+///
 // This sends an update tick to the Discord RPC (Must be run after InitializeDiscord()).
 ///
 void UpdateDiscord()
 {
-	if (player.get_last_hunter_rank() == player.get_hunter_rank() && player.get_last_master_rank() == player.get_master_rank() && quest.get_id() == quest.get_last_id()) // Stop if there's identical data.
+	if (player.get_last_hunter_rank() == player.get_hunter_rank() && player.get_last_master_rank() == player.get_master_rank() && quest.get_id() == quest.get_last_id() && last_quest_status == quest_status) // Stop if there's identical data.
 		return;
 
 	std::cout << player.get_name() << " -- HR/MR " << player.get_hunter_rank() << "/" << player.get_master_rank() << std::endl;
 
 	discord::Activity activity{}; // A blank object to send to the Discord RPC.
+	bool isinQuest = quest_status;
 
 	///
 	// Generate and format strings for use in the Rich Presence.
 	///
-	std::string details = (quest.get_id() != 0 ? languageData["IN_QUEST"].GetString() : languageData["IN_HUB"].GetString());
+	std::string details = (quest.get_id() != 0 && quest.get_id() != 65535 && isinQuest ? languageData["IN_QUEST"].GetString() : languageData["IN_HUB"].GetString());
 	std::string state = (displayName ? player.get_name() + " -- "  : "") + "HR/MR: " + std::to_string((int)player.get_hunter_rank()) + "/" + std::to_string((int)player.get_master_rank());
 	std::string map = "";
 
 	///
 	// Apply the image assets.
 	///
-	activity.GetAssets().SetLargeImage(quest.get_id() == 0 ? "astera" : ("map_"+std::to_string(quest.get_map_id())).c_str());
-	activity.GetAssets().SetLargeText(quest.get_id() == 0 ? languageData["IN_ASTERA"].GetString() : languageData[("map_" + std::to_string(quest.get_map_id())).c_str()].GetString());
+	activity.GetAssets().SetLargeImage((quest.get_id() == 0 || quest.get_id() == 65535 || !isinQuest) ? "astera" : ("map_"+std::to_string(quest.get_map_id())).c_str());
+	activity.GetAssets().SetLargeText((quest.get_id() == 0||quest.get_id()==65535) && !isinQuest ? languageData["IN_ASTERA"].GetString() : languageData[("map_" + std::to_string(quest.get_map_id())).c_str()].GetString());
 
-	activity.GetAssets().SetSmallImage(quest.get_id() != 0 ? "quest" : "");
+	activity.GetAssets().SetSmallImage(quest.get_id() != 0 && quest.get_id() != 65535 && isinQuest ? "quest" : "");
 
 	///
 	// Apply the state and details to the activity object.
@@ -261,11 +281,10 @@ void FindPlayerIndex()
 
 		// Base check
 		if (byteArray == 1125346736) {
-			// Secondary check
 			int byteArray2 = 0;
-			ReadProcessMemory(mhw_handle, (LPCVOID)(address + 0x8), &byteArray2, sizeof(byteArray), NULL);
+			ReadProcessMemory(mhw_handle, (LPCVOID)(address + 0x1), &byteArray2, sizeof(byteArray2), NULL);
 
-			if (byteArray2 != -1)
+			if (byteArray2 == 1)
 				continue;
 
 			BASE_ADDRESS = address;
@@ -297,10 +316,6 @@ void FindQuestIndex()
 
 		// Base check
 		if (byteArray == 1125167688) {
-			// Secondary check
-			int byteArray2 = 0;
-			ReadProcessMemory(mhw_handle, (LPCVOID)(address + 0x1), &byteArray2, sizeof(byteArray), NULL);
-
 			QUEST_ADDRESS = address;
 
 			std::cout << languageData["QUEST_ADDRESS_FOUND"].GetString() << std::endl;
@@ -310,7 +325,7 @@ void FindQuestIndex()
 		}
 	}
 
-	if (BASE_ADDRESS == 0)
+	if (QUEST_ADDRESS == 0)
 		std::cout << languageData["QUEST_ADDRESS_NOT_FOUND"].GetString() << std::endl;
 }
 
@@ -333,6 +348,7 @@ void ApplicationLoop()
 
 	if (!IsStillRunning()) {
 		BASE_ADDRESS = 0;
+		QUEST_ADDRESS = 0;
 		checking = true;
 		AttemptHook();
 		return;
@@ -403,6 +419,27 @@ void ReadQuests()
 }
 
 ///
+// Find the address used to check whether or not you're in a quest.
+///
+void FindCheckAddress()
+{
+	for (long long address = CHECK_START_INDEX; address < CHECK_END_INDEX; address += 0x1000) {
+		int byteArray = 0;
+		ReadProcessMemory(mhw_handle, (LPCVOID)address, &byteArray, sizeof(byteArray), NULL);
+
+		// Base check
+		if (byteArray == 1122138360) {
+			// Secondary check
+			int byteArray2 = 0;
+			ReadProcessMemory(mhw_handle, (LPCVOID)(address + 0x1), &byteArray2, sizeof(byteArray), NULL);
+
+			CHECK_ADDRESS = address;
+			break;
+		}
+	}
+}
+
+///
 // Initialize Discord, attempt to hook the game, and begin the application loop.
 ///
 int main()
@@ -426,7 +463,6 @@ int main()
 	AttemptHook();
 
 	FindPlayerIndex();
-	FindQuestIndex();
 
 	while (true) {
 		Sleep(2000);
@@ -434,7 +470,12 @@ int main()
 		if (checking == false) {
 			if (BASE_ADDRESS == 0)
 				FindPlayerIndex();
+			else if (QUEST_ADDRESS == 0)
+				FindQuestIndex();
+			else if (QUEST_ADDRESS != 0 && CHECK_ADDRESS == 0)
+				FindCheckAddress();
 
+			IsActuallyInQuest();
 			ApplicationLoop();
 			UpdateDiscord();
 		}
