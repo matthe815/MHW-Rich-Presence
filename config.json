@@ -1,5 +1,6 @@
 {
 	"displayName": true,
 	"language": "languages/English.json",
+	"quests": "languages/English_Quests.json",
 	"saveSlot": 2
 }
