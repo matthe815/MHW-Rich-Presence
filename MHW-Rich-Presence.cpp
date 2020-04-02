@@ -32,6 +32,11 @@ QuestData quest{};
 Player player{};
 
 ///
+// A list of information.
+///
+std::string questNames[512];
+
+///
 // Process information
 ///
 LPCWSTR process_name = L"MonsterHunterWorld.exe";
@@ -41,8 +46,9 @@ boolean checking = true;
 ///
 // Application settings.
 ///
-std::string version = "0.5.3";
+std::string version = "0.7";
 std::string language = "English";
+std::string language_quests = "English";
 rapidjson::Document languageData;
 int saveSlot = 1;
 
@@ -72,7 +78,7 @@ void InitializeDiscord()
 ///
 void UpdateDiscord()
 {
-	if (player.get_last_hunter_rank() == player.get_hunter_rank() && player.get_last_master_rank() == player.get_master_rank()) // Stop if there's identical data.
+	if (player.get_last_hunter_rank() == player.get_hunter_rank() && player.get_last_master_rank() == player.get_master_rank() && quest.get_id() == quest.get_last_id()) // Stop if there's identical data.
 		return;
 
 	std::cout << player.get_name() << " -- HR/MR " << player.get_hunter_rank() << "/" << player.get_master_rank() << std::endl;
@@ -82,15 +88,17 @@ void UpdateDiscord()
 	///
 	// Generate and format strings for use in the Rich Presence.
 	///
-	std::string details = (player.is_in_quest() == true ? languageData["IN_QUEST"].GetString() : languageData["IN_HUB"].GetString());
+	std::string details = (quest.get_id() != 0 ? languageData["IN_QUEST"].GetString() : languageData["IN_HUB"].GetString());
 	std::string state = (displayName ? player.get_name() + " -- "  : "") + "HR/MR: " + std::to_string((int)player.get_hunter_rank()) + "/" + std::to_string((int)player.get_master_rank());
 	std::string map = "";
 
 	///
 	// Apply the image assets.
 	///
-	activity.GetAssets().SetLargeImage("astera");
-	activity.GetAssets().SetLargeText(languageData["IN_ASTERA"].GetString());
+	activity.GetAssets().SetLargeImage(quest.get_id() == 0 ? "astera" : ("map_"+std::to_string(quest.get_map_id())).c_str());
+	activity.GetAssets().SetLargeText(quest.get_id() == 0 ? languageData["IN_ASTERA"].GetString() : languageData[("map_" + std::to_string(quest.get_map_id())).c_str()].GetString());
+
+	activity.GetAssets().SetSmallImage(quest.get_id() != 0 ? "quest" : "");
 
 	///
 	// Apply the state and details to the activity object.
@@ -176,6 +184,7 @@ void Hook()
 {
 	mhw_handle = OpenProcess(PROCESS_ALL_ACCESS, true, FindProcessId(process_name));
 	checking = false; // Tell the system that it's not searching anymore.
+	ShowWindow(GetConsoleWindow(), SW_SHOW);
 
 	std::cout << (mhw_handle == NULL ? languageData["FAILED_HOOK"].GetString() : languageData["SUCCESSFUL_HOOK"].GetString()) << process_name << "!" << std::endl;
 }
@@ -193,6 +202,7 @@ bool IsMHWRunning()
 ///
 void AttemptHook()
 {
+	ShowWindow(GetConsoleWindow(), SW_HIDE);
 	std::cout << languageData["HOOK_ATTEMPT"].GetString() << process_name << std::endl;
 
 	if (IsMHWRunning() == false) {
@@ -216,7 +226,9 @@ void ReadMemory()
 {
 	int hunter_rank,
 		master_rank,
-		session_duration = 0;
+		session_duration = 0,
+		quest_id = 0,
+		map_id = 0;
 
 	long long current_quest = 0;
 
@@ -225,6 +237,13 @@ void ReadMemory()
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x90), &hunter_rank, sizeof(hunter_rank), NULL); // Obtain memory value for HR.
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x50), &hunter_name, sizeof(hunter_name), NULL); // Obtain memory value for name.
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0xD4), &master_rank, sizeof(master_rank), NULL); // Obtain memory value for MR.
+
+	if (QUEST_ADDRESS != 0) {
+		ReadProcessMemory(mhw_handle, (LPCVOID)(QUEST_ADDRESS-0xE8), &quest_id, 2, NULL); // Obtain the quest ID.
+		ReadProcessMemory(mhw_handle, (LPCVOID)(QUEST_ADDRESS-0x168), &map_id, 2, NULL); // Obtain the map ID.
+
+		quest.set_data(quest_id, map_id);
+	}
 
 	player.set_data(hunter_name != NULL ? hunter_name : "Cross", hunter_rank, master_rank, session_duration, current_quest != 0);
 }
@@ -342,6 +361,7 @@ void ReadConfig()
 	displayName = d["displayName"].GetBool();
 	language = d["language"].GetString();
 	saveSlot = d["saveSlot"].GetInt();
+	language_quests = d["quests"].GetString();
 
 	std::cout << "Config loaded!" << std::endl;
 }
@@ -365,18 +385,38 @@ void LoadLanguage()
 }
 
 ///
+// Load the quest list.
+///
+void ReadQuests()
+{
+	std::cout << "Loading quests..." << std::endl;
+
+	FILE* fp = fopen(language_quests.c_str(), "rb");
+
+	char readBuffer[65536];
+	rapidjson::Document d;
+	rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+	d.ParseStream(is);
+	fclose(fp);
+
+	std::cout << "Quests loaded!" << std::endl;
+}
+
+///
 // Initialize Discord, attempt to hook the game, and begin the application loop.
 ///
 int main()
 {
 	ReadConfig();
 	LoadLanguage();
+	ReadQuests();
 
 	std::cout << "----------------------------------------" << std::endl;
 
 	std::cout << "" << std::endl;
 	std::cout << languageData["APP_DATA"].GetString() << version << std::endl;
 	std::cout << languageData["CLOSE_DISCLAIMER"].GetString() << std::endl;
+	Sleep(5000);
 	std::cout << "" << std::endl;
 
 	std::cout << "-----------------------------------------" << std::endl;
@@ -384,6 +424,7 @@ int main()
 
 	InitializeDiscord();
 	AttemptHook();
+
 	FindPlayerIndex();
 	FindQuestIndex();
 
