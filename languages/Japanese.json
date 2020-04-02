@@ -2,22 +2,38 @@
 	"locale": "ja_JP.UTF-8",
 	"application_id": 695009812710162503,
 	
-	"APP_DATA": "モンスターハンターワルドー: Rich Presence > v",
-	"CLOSE_DISCLAIMER": "You do not need to close this application at any point, it'll hide itself until Monster Hunter is opened.",
+	"APP_DATA": "モンスターハンターワールド: Rich Presence > v",
+	"CLOSE_DISCLAIMER": "ゲームを終了してもこのアプリは閉じる必要はなく、次のゲーム起動まで最小化されます。",
 
-	"PLAYER_ADDRESS_FOUND": "プレイヤーのメモリーアヅレスを見つけました",
-	"PLAYER_ADDRESS_LOCATION": "プレイヤーのメモリーアヅレス: ",
-	"PLAYER_ADDRESS_VALUE": "プレイヤーのメモリーアヅレスの値: ",
-	"PLAYER_ADDRESS_NOT_FOUND": "プレイヤーのメモリーアヅレスを見つけてできない",
+	"PLAYER_ADDRESS_FOUND": "プレイヤー情報のメモリアドレスを発見しました。",
+	"PLAYER_ADDRESS_LOCATION": "プレイヤー情報のメモリアドレス : ",
+	"PLAYER_ADDRESS_VALUE": "プレイヤー情報のメモリアドレスの値 : ",
+	"PLAYER_ADDRESS_NOT_FOUND": "プレイヤー情報のメモリアドレスが見つかりませんでした。",
 	
-	"HOOK_ATTEMPT": "アプリのフックを試みっている: ",
-	"WAITING_FOR_HOOK": "アプリのフックをできない、待っている： ",
+	"QUEST_ADDRESS_FOUND": "プレイヤー情報のメモリアドレスを発見しました",
+	"QUEST_ADDRESS_LOCATION": "プレイヤー情報のメモリアドレス: ",
+	"QUEST_ADDRESS_VALUE": "プレイヤー情報のメモリアドレスの値: ",
+	"QUEST_ADDRESS_NOT_FOUND": "プレイヤー情報のメモリアドレスが見つかりませんでした",
 	
-	"SUCCESSFUL_HOOK": "フックをできました ",
-	"FAILED_HOOK": "フックをできない ",
+	"HOOK_ATTEMPT": "ゲームとの接続を試みます… : ",
+	"WAITING_FOR_HOOK": "ゲームに接続できませんでした。 待機します… ： ",
+	
+	"SUCCESSFUL_HOOK": "ゲームとの接続に成功しました。",
+	"FAILED_HOOK": "ゲームとの接続に失敗しました。",
+	
+	"UNKNOWN_QUEST": "Unknown Quest",
 
 	"IN_HUB": "ハブで",
-	"IN_QUEST": "クエストをしている",
+	"IN_QUEST": "クエストで",
 
-	"IN_ASTERA": "アステラで"
+	"IN_ASTERA": "アステラで",
+	
+	"map_101": "古代樹の森",
+	"map_102": "大蟻塚の荒地",
+	"map_103": "陸珊瑚の台地",
+	"map_104": "瘴気の谷",
+	"map_105": "龍結晶の地",
+	"map_108": "渡りの凍て地",
+	"map_201": "特殊闘技場",
+	"map_202": "闘技場"
 }

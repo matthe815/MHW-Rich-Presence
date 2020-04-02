@@ -13,7 +13,7 @@
 	"QUEST_ADDRESS_FOUND": "Found quest memory address",
 	"QUEST_ADDRESS_LOCATION": "Current quest memory address: ",
 	"QUEST_ADDRESS_VALUE": "Current quest memory address value: ",
-	"QUEST_ADDRESS_NOT_FOUND": "We were unable to find the quest address associated with the player.",
+	"QUEST_ADDRESS_NOT_FOUND": "We were unable to find the quest address associated with the player. This means your current quest will not display.",
 	
 	"HOOK_ATTEMPT": "Attempting to hook onto application: ",
 	"WAITING_FOR_HOOK": "Failed to hook onto the application! Waiting for process ",
@@ -24,5 +24,14 @@
 	"IN_HUB": "Chillin' In The Hub",
 	"IN_QUEST": "In Quest",
 
-	"IN_ASTERA": "At Astera"
+	"IN_ASTERA": "At Astera",
+	
+	"map_101": "The Ancient Forest",
+	"map_102": "Wildspire Waste",
+	"map_103": "Coral Highlands",
+	"map_104": "Rotten Vale",
+	"map_105": "Elder's Recess",
+	"map_108": "Hoarfrost Reach",
+	"map_201": "Special Arena",
+	"map_202": "Arena"
 }
