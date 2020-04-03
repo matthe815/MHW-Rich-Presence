@@ -2,5 +2,7 @@
 	"displayName": true,
 	"language": "languages/English.json",
 	"quests": "languages/English_Quests.json",
-	"saveSlot": 2
+	"saveSlot": 1,
+	"autoClose": true,
+	"hideSelfOnClose": false
 }
