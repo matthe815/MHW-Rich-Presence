@@ -8,18 +8,30 @@ class Player
 {
 	std::string hunter_name;
 
-	int hunter_rank = 0,
+	int hunter_rank      = 0,
 		last_hunter_rank = 0,
-		master_rank = 0,
+		master_rank      = 0,
 		last_master_rank = 0;
 
-	float session_time = 0,
+	float session_time    = 0,
 		last_session_time = 0;
 
-	bool in_quest = 0,
+	bool in_quest     = 0,
 		last_in_quest = 0;
 
 	bool last_in_session = 0;
+
+	int weapon_type = 0;
+
+	///
+	// Guided Lands level
+	///
+	int forest_level    = 0,
+		wildspire_level = 0,
+		coral_level     = 0,
+		rotten_level    = 0,
+		elder_level     = 0,
+		tundra_level    = 0;
 
 public:
 	void set_data(std::string name, int hr, int mr, float current_session, bool is_quest)
@@ -39,6 +51,26 @@ public:
 
 		last_in_quest = is_quest;
 		in_quest = is_quest;
+	}
+
+	void set_guided_lands(int forest, int wildspire, int coral, int rotten, int elder, int tundra)
+	{
+		forest_level = forest;
+		wildspire_level = wildspire;
+		coral_level = coral;
+		rotten_level = rotten;
+		elder_level = elder;
+		tundra_level = tundra;
+	}
+
+	void set_weapon(int type)
+	{
+		weapon_type = type;
+	}
+
+	int get_weapon_type()
+	{
+		return weapon_type;
 	}
 
 	std::string get_name()
@@ -94,6 +126,38 @@ public:
 	bool is_in_session()
 	{
 		return last_session_time != session_time;
+	}
+
+	// ---------------------
+
+	int get_forest_level()
+	{
+		return forest_level;
+	}
+
+	int get_wildspire_level()
+	{
+		return wildspire_level;
+	}
+
+	int get_coral_level()
+	{
+		return coral_level;
+	}
+
+	int get_rotten_level()
+	{
+		return rotten_level;
+	}
+
+	int get_elder_level()
+	{
+		return elder_level;
+	}
+
+	int get_tundra_level()
+	{
+		return tundra_level;
 	}
 };
 
