@@ -45,14 +45,21 @@ boolean checking = true;
 boolean last_quest_status = false;
 boolean quest_status = false;
 
+boolean last_guided_lands_status = false;
+boolean in_guided_lands = false;
+int last_map = 0;
+int current_map = 0;
+
 ///
 // Application settings.
 ///
-std::string version = "0.7";
+std::string version = "0.9";
 std::string language = "English";
 std::string language_quests = "English";
 rapidjson::Document languageData;
 int saveSlot = 1;
+bool hideSelf = false;
+bool autoClose = false;
 
 ///
 // Pointer information
@@ -62,11 +69,18 @@ long long MHW_PTR = 0x140000000 + 0x04EA20A8
 , END_INDEX = 0xFFFF0080
 , QUEST_START_INDEX = 0x10000F20
 , QUEST_END_INDEX = 0xF0000000
-, CHECK_START_INDEX = 0x00000080
-, CHECK_END_INDEX = 0xA0000000
 , BASE_ADDRESS = 0
-, QUEST_ADDRESS = 0
-, CHECK_ADDRESS = 0;
+, QUEST_ADDRESS = 0;
+
+LPCVOID NEW_EQUIPMENT_ADDRESS = 0;
+LPCVOID LEVEL_ADDRESS = 0;
+
+///
+// Static addresses
+///
+long long MHW_BASE_ADDRESS = 0x140000000
+, EQUIPMENT_OFFSET = 0x04ECB860
+, LEVEL_OFFSET = 0x04EC7030;
 
 boolean displayName = false; // Whether or not to display the player's name.
 
@@ -79,46 +93,87 @@ void InitializeDiscord()
 }
 
 ///
-// Verify the player is ACTUALLY in a quest.
+// Get if the player is actually in the guided lands.
 ///
-void IsActuallyInQuest()
+void IsInGuidedLands()
 {
-	int actual_map = 0;
-	last_quest_status = quest_status;
+	int monster1;
 
-	ReadProcessMemory(mhw_handle, (LPCVOID)(CHECK_ADDRESS + 0x27C), &actual_map, sizeof(2), NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27B9F6), &monster1, sizeof(monster1), NULL);
 
-	quest_status = actual_map != 0;
+	last_guided_lands_status = in_guided_lands;
+	in_guided_lands = monster1 != 0;
 }
 
+void GetTrueMapID()
+{
+	last_map = current_map;
+	ReadProcessMemory(mhw_handle, (LPCVOID)((long long)LEVEL_ADDRESS+0xAED0), &current_map, 2, NULL);
+}
+
+///
+// Obtain the guided lands levels.
+///
+void GetGuidedLevels()
+{
+	int forest    = 0,
+		wildspire = 0,
+		coral     = 0,
+		rotten    = 0,
+		elder     = 0,
+		tundra    = 0;
+
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27BA08), &forest, 1, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27BA09), &wildspire, 1, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27BA0A), &coral, 1, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27BA0B), &rotten, 1, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27BA0C), &elder, 1, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27BA0D), &tundra, 1, NULL);
+
+	player.set_guided_lands(forest, wildspire, coral, rotten, elder, tundra);
+}
 
 ///
 // This sends an update tick to the Discord RPC (Must be run after InitializeDiscord()).
 ///
 void UpdateDiscord()
 {
-	if (player.get_last_hunter_rank() == player.get_hunter_rank() && player.get_last_master_rank() == player.get_master_rank() && quest.get_id() == quest.get_last_id() && last_quest_status == quest_status) // Stop if there's identical data.
+	if (player.get_last_hunter_rank() == player.get_hunter_rank() && player.get_last_master_rank() == player.get_master_rank() 
+		&& quest.get_id() == quest.get_last_id() && last_quest_status == quest_status && last_guided_lands_status == in_guided_lands && last_map == current_map) // Stop if there's identical data.
 		return;
 
 	std::cout << player.get_name() << " -- HR/MR " << player.get_hunter_rank() << "/" << player.get_master_rank() << std::endl;
 
 	discord::Activity activity{}; // A blank object to send to the Discord RPC.
-	bool isinQuest = quest_status;
 
 	///
 	// Generate and format strings for use in the Rich Presence.
 	///
-	std::string details = (quest.get_id() != 0 && quest.get_id() != 65535 && isinQuest ? languageData["IN_QUEST"].GetString() : languageData["IN_HUB"].GetString());
+	std::string details = (current_map != 301&&current_map != 302&&current_map != 303&&current_map != 304&&current_map != 305 & current_map != 306 ? languageData["IN_QUEST"].GetString() : languageData["IN_HUB"].GetString());
 	std::string state = (displayName ? player.get_name() + " -- "  : "") + "HR/MR: " + std::to_string((int)player.get_hunter_rank()) + "/" + std::to_string((int)player.get_master_rank());
-	std::string map = "";
+	std::string map = "map_" + std::to_string(current_map);
 
 	///
-	// Apply the image assets.
+	// Apply image assets.
 	///
-	activity.GetAssets().SetLargeImage((quest.get_id() == 0 || quest.get_id() == 65535 || !isinQuest) ? "astera" : ("map_"+std::to_string(quest.get_map_id())).c_str());
-	activity.GetAssets().SetLargeText((quest.get_id() == 0||quest.get_id()==65535) && !isinQuest ? languageData["IN_ASTERA"].GetString() : languageData[("map_" + std::to_string(quest.get_map_id())).c_str()].GetString());
+	activity.GetAssets().SetLargeImage(map.c_str());
+	activity.GetAssets().SetLargeText(languageData[map.c_str()].GetString());
+	activity.GetAssets().SetSmallImage(current_map != 301 && current_map != 302 && current_map != 303 && current_map != 304 && current_map != 305 & current_map != 306 ? "quest" : "");
 
-	activity.GetAssets().SetSmallImage(quest.get_id() != 0 && quest.get_id() != 65535 && isinQuest ? "quest" : "");
+	///
+	// Display special info in the guided lands.
+	///
+	if (current_map == 109) {
+		details = languageData["EXPLORING"].GetString() + std::to_string(player.get_forest_level()) + "/" + std::to_string(player.get_wildspire_level()) + "/" + std::to_string(player.get_coral_level()) + 
+			"/" + std::to_string(player.get_rotten_level()) + "/" + std::to_string(player.get_elder_level()) + "/" + std::to_string(player.get_tundra_level());
+
+		activity.GetAssets().SetSmallImage("quest");
+	}
+	else if (current_map == 0) {
+		details = languageData["MAIN_MENU"].GetString();
+		state = "";
+		activity.GetAssets().SetSmallImage("");
+	}
 
 	///
 	// Apply the state and details to the activity object.
@@ -204,7 +259,9 @@ void Hook()
 {
 	mhw_handle = OpenProcess(PROCESS_ALL_ACCESS, true, FindProcessId(process_name));
 	checking = false; // Tell the system that it's not searching anymore.
-	ShowWindow(GetConsoleWindow(), SW_SHOW);
+
+	if (hideSelf==true)
+		ShowWindow(GetConsoleWindow(), SW_SHOW);
 
 	std::cout << (mhw_handle == NULL ? languageData["FAILED_HOOK"].GetString() : languageData["SUCCESSFUL_HOOK"].GetString()) << process_name << "!" << std::endl;
 }
@@ -222,7 +279,9 @@ bool IsMHWRunning()
 ///
 void AttemptHook()
 {
-	ShowWindow(GetConsoleWindow(), SW_HIDE);
+	if (hideSelf==true)
+		ShowWindow(GetConsoleWindow(), SW_HIDE);
+
 	std::cout << languageData["HOOK_ATTEMPT"].GetString() << process_name << std::endl;
 
 	if (IsMHWRunning() == false) {
@@ -258,7 +317,11 @@ void ReadMemory()
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x50), &hunter_name, sizeof(hunter_name), NULL); // Obtain memory value for name.
 	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0xD4), &master_rank, sizeof(master_rank), NULL); // Obtain memory value for MR.
 
-	if (QUEST_ADDRESS != 0) {
+	GetTrueMapID();
+
+	if (current_map == 109) {
+		GetGuidedLevels();
+	} else if (QUEST_ADDRESS != 0) {
 		ReadProcessMemory(mhw_handle, (LPCVOID)(QUEST_ADDRESS-0xE8), &quest_id, 2, NULL); // Obtain the quest ID.
 		ReadProcessMemory(mhw_handle, (LPCVOID)(QUEST_ADDRESS-0x168), &map_id, 2, NULL); // Obtain the map ID.
 
@@ -349,7 +412,15 @@ void ApplicationLoop()
 	if (!IsStillRunning()) {
 		BASE_ADDRESS = 0;
 		QUEST_ADDRESS = 0;
+		NEW_EQUIPMENT_ADDRESS = 0;
+		LEVEL_ADDRESS = 0;
 		checking = true;
+
+		if (autoClose == true) { // Close self if requested.
+			CloseWindow(GetConsoleWindow());
+			exit(0);
+		}
+
 		AttemptHook();
 		return;
 	}
@@ -378,6 +449,8 @@ void ReadConfig()
 	language = d["language"].GetString();
 	saveSlot = d["saveSlot"].GetInt();
 	language_quests = d["quests"].GetString();
+	autoClose = d["autoClose"].GetBool();
+	hideSelf = d["hideSelfOnClose"].GetBool();
 
 	std::cout << "Config loaded!" << std::endl;
 }
@@ -419,24 +492,13 @@ void ReadQuests()
 }
 
 ///
-// Find the address used to check whether or not you're in a quest.
+// Read a static address.
 ///
-void FindCheckAddress()
+LPCVOID ReadStaticAddress(LPCVOID address)
 {
-	for (long long address = CHECK_START_INDEX; address < CHECK_END_INDEX; address += 0x1000) {
-		int byteArray = 0;
-		ReadProcessMemory(mhw_handle, (LPCVOID)address, &byteArray, sizeof(byteArray), NULL);
-
-		// Base check
-		if (byteArray == 1122138360) {
-			// Secondary check
-			int byteArray2 = 0;
-			ReadProcessMemory(mhw_handle, (LPCVOID)(address + 0x1), &byteArray2, sizeof(byteArray), NULL);
-
-			CHECK_ADDRESS = address;
-			break;
-		}
-	}
+	LPCVOID address2;
+	ReadProcessMemory(mhw_handle, address, &address2, 16, NULL);
+	return address2;
 }
 
 ///
@@ -452,7 +514,10 @@ int main()
 
 	std::cout << "" << std::endl;
 	std::cout << languageData["APP_DATA"].GetString() << version << std::endl;
-	std::cout << languageData["CLOSE_DISCLAIMER"].GetString() << std::endl;
+
+	if (hideSelf==true) // Only display the message if the config option is enabled.
+		std::cout << languageData["CLOSE_DISCLAIMER"].GetString() << std::endl;
+
 	Sleep(5000);
 	std::cout << "" << std::endl;
 
@@ -462,6 +527,8 @@ int main()
 	InitializeDiscord();
 	AttemptHook();
 
+	LEVEL_ADDRESS = ReadStaticAddress((LPCVOID)(MHW_BASE_ADDRESS + LEVEL_OFFSET));
+
 	FindPlayerIndex();
 
 	while (true) {
@@ -470,12 +537,11 @@ int main()
 		if (checking == false) {
 			if (BASE_ADDRESS == 0)
 				FindPlayerIndex();
-			else if (QUEST_ADDRESS == 0)
+			if (QUEST_ADDRESS == 0)
 				FindQuestIndex();
-			else if (QUEST_ADDRESS != 0 && CHECK_ADDRESS == 0)
-				FindCheckAddress();
+			if (LEVEL_ADDRESS == 0)
+				LEVEL_ADDRESS = ReadStaticAddress((LPCVOID)(MHW_BASE_ADDRESS + LEVEL_OFFSET));
 
-			IsActuallyInQuest();
 			ApplicationLoop();
 			UpdateDiscord();
 		}
