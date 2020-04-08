@@ -53,7 +53,7 @@ int current_map = 0;
 ///
 // Application settings.
 ///
-std::string version = "0.9";
+std::string version = "0.9.1";
 std::string language = "English";
 std::string language_quests = "English";
 rapidjson::Document languageData;
@@ -108,7 +108,7 @@ void IsInGuidedLands()
 void GetTrueMapID()
 {
 	last_map = current_map;
-	ReadProcessMemory(mhw_handle, (LPCVOID)((long long)LEVEL_ADDRESS+0xAED0), &current_map, 2, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)((long long)LEVEL_ADDRESS + 0xAED0), &current_map, 2, NULL);
 }
 
 ///
@@ -116,21 +116,21 @@ void GetTrueMapID()
 ///
 void GetGuidedLevels()
 {
-	int forest    = 0,
+	int forest = 0,
 		wildspire = 0,
-		coral     = 0,
-		rotten    = 0,
-		elder     = 0,
-		tundra    = 0;
+		coral = 0,
+		rotten = 0,
+		elder = 0,
+		tundra = 0;
 
-	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27BA08), &forest, 1, NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27BA09), &wildspire, 1, NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27BA0A), &coral, 1, NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27BA0B), &rotten, 1, NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27BA0C), &elder, 1, NULL);
-	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27BA0D), &tundra, 1, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27B928), &forest, 4, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27B92C), &wildspire, 4, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27B930), &coral, 4, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27B934), &rotten, 4, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27B938), &elder, 4, NULL);
+	ReadProcessMemory(mhw_handle, (LPCVOID)(BASE_ADDRESS + 0x27B93C), &tundra, 4, NULL);
 
-	player.set_guided_lands(forest, wildspire, coral, rotten, elder, tundra);
+	player.set_guided_lands(forest > 10000 ? (forest / 10000) + 1 : 1, wildspire > 10000 ? (wildspire / 10000) + 1 : 1, coral > 10000 ? (coral / 10000) + 1 : 1, rotten > 10000 ? (rotten / 10000) + 1 : 1, elder > 10000 ? (elder / 10000) + 1 : 1, tundra > 10000 ? (tundra / 10000) + 1 : 1);
 }
 
 ///
@@ -138,7 +138,7 @@ void GetGuidedLevels()
 ///
 void UpdateDiscord()
 {
-	if (player.get_last_hunter_rank() == player.get_hunter_rank() && player.get_last_master_rank() == player.get_master_rank() 
+	if (player.get_last_hunter_rank() == player.get_hunter_rank() && player.get_last_master_rank() == player.get_master_rank()
 		&& quest.get_id() == quest.get_last_id() && last_quest_status == quest_status && last_guided_lands_status == in_guided_lands && last_map == current_map) // Stop if there's identical data.
 		return;
 
@@ -149,8 +149,8 @@ void UpdateDiscord()
 	///
 	// Generate and format strings for use in the Rich Presence.
 	///
-	std::string details = (current_map != 301&&current_map != 302&&current_map != 303&&current_map != 304&&current_map != 305 & current_map != 306 ? languageData["IN_QUEST"].GetString() : languageData["IN_HUB"].GetString());
-	std::string state = (displayName ? player.get_name() + " -- "  : "") + "HR/MR: " + std::to_string((int)player.get_hunter_rank()) + "/" + std::to_string((int)player.get_master_rank());
+	std::string details = (current_map != 301 && current_map != 302 && current_map != 303 && current_map != 304 && current_map != 305 & current_map != 306 ? languageData["IN_QUEST"].GetString() : languageData["IN_HUB"].GetString());
+	std::string state = (displayName ? player.get_name() + " -- " : "") + "HR/MR: " + std::to_string((int)player.get_hunter_rank()) + "/" + std::to_string((int)player.get_master_rank());
 	std::string map = "map_" + std::to_string(current_map);
 
 	///
@@ -164,7 +164,7 @@ void UpdateDiscord()
 	// Display special info in the guided lands.
 	///
 	if (current_map == 109) {
-		details = languageData["EXPLORING"].GetString() + std::to_string(player.get_forest_level()) + "/" + std::to_string(player.get_wildspire_level()) + "/" + std::to_string(player.get_coral_level()) + 
+		details = languageData["EXPLORING"].GetString() + std::to_string(player.get_forest_level()) + "/" + std::to_string(player.get_wildspire_level()) + "/" + std::to_string(player.get_coral_level()) +
 			"/" + std::to_string(player.get_rotten_level()) + "/" + std::to_string(player.get_elder_level()) + "/" + std::to_string(player.get_tundra_level());
 
 		activity.GetAssets().SetSmallImage("quest");
@@ -260,7 +260,7 @@ void Hook()
 	mhw_handle = OpenProcess(PROCESS_ALL_ACCESS, true, FindProcessId(process_name));
 	checking = false; // Tell the system that it's not searching anymore.
 
-	if (hideSelf==true)
+	if (hideSelf == true)
 		ShowWindow(GetConsoleWindow(), SW_SHOW);
 
 	std::cout << (mhw_handle == NULL ? languageData["FAILED_HOOK"].GetString() : languageData["SUCCESSFUL_HOOK"].GetString()) << process_name << "!" << std::endl;
@@ -279,7 +279,7 @@ bool IsMHWRunning()
 ///
 void AttemptHook()
 {
-	if (hideSelf==true)
+	if (hideSelf == true)
 		ShowWindow(GetConsoleWindow(), SW_HIDE);
 
 	std::cout << languageData["HOOK_ATTEMPT"].GetString() << process_name << std::endl;
@@ -321,9 +321,10 @@ void ReadMemory()
 
 	if (current_map == 109) {
 		GetGuidedLevels();
-	} else if (QUEST_ADDRESS != 0) {
-		ReadProcessMemory(mhw_handle, (LPCVOID)(QUEST_ADDRESS-0xE8), &quest_id, 2, NULL); // Obtain the quest ID.
-		ReadProcessMemory(mhw_handle, (LPCVOID)(QUEST_ADDRESS-0x168), &map_id, 2, NULL); // Obtain the map ID.
+	}
+	else if (QUEST_ADDRESS != 0) {
+		ReadProcessMemory(mhw_handle, (LPCVOID)(QUEST_ADDRESS - 0xE8), &quest_id, 2, NULL); // Obtain the quest ID.
+		ReadProcessMemory(mhw_handle, (LPCVOID)(QUEST_ADDRESS - 0x168), &map_id, 2, NULL); // Obtain the map ID.
 
 		quest.set_data(quest_id, map_id);
 	}
@@ -436,7 +437,7 @@ void ReadConfig()
 {
 	std::cout << "Loading config..." << std::endl;
 	FILE* fp = fopen("config.json", "rb");
-	
+
 	char readBuffer[65536];
 	rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
 
@@ -469,7 +470,7 @@ void LoadLanguage()
 	languageData.ParseStream(is);
 	fclose(fp);
 	std::setlocale(LC_ALL, languageData["locale"].GetString());
-	
+
 	std::cout << language + " loaded!" << std::endl;
 }
 
@@ -515,7 +516,7 @@ int main()
 	std::cout << "" << std::endl;
 	std::cout << languageData["APP_DATA"].GetString() << version << std::endl;
 
-	if (hideSelf==true) // Only display the message if the config option is enabled.
+	if (hideSelf == true) // Only display the message if the config option is enabled.
 		std::cout << languageData["CLOSE_DISCLAIMER"].GetString() << std::endl;
 
 	Sleep(5000);
