@@ -80,7 +80,7 @@ LPCVOID LEVEL_ADDRESS = 0;
 ///
 long long MHW_BASE_ADDRESS = 0x140000000
 , EQUIPMENT_OFFSET = 0x04ECB860
-, LEVEL_OFFSET = 0x04EC7030;
+, LEVEL_OFFSET = 0x04F29FF0;
 
 boolean displayName = false; // Whether or not to display the player's name.
 
@@ -89,7 +89,7 @@ boolean displayName = false; // Whether or not to display the player's name.
 ///
 void InitializeDiscord()
 {
-	discord::Core::Create(languageData["application_id"].GetInt64(), DiscordCreateFlags_Default, &core);
+	discord::Core::Create(666709854622187570, DiscordCreateFlags_Default, &core);
 }
 
 ///
@@ -344,7 +344,7 @@ void FindPlayerIndex()
 		ReadProcessMemory(mhw_handle, (LPCVOID)address, &byteArray, sizeof(byteArray), NULL);
 
 		// Base check
-		if (byteArray == 1125346736) {
+		if (byteArray == 1125683608) {
 			int byteArray2 = 0;
 			ReadProcessMemory(mhw_handle, (LPCVOID)(address + 0x1), &byteArray2, sizeof(byteArray2), NULL);
 
@@ -539,7 +539,7 @@ int main()
 			if (BASE_ADDRESS == 0)
 				FindPlayerIndex();
 			if (QUEST_ADDRESS == 0)
-				FindQuestIndex();
+			//	FindQuestIndex();
 			if (LEVEL_ADDRESS == 0)
 				LEVEL_ADDRESS = ReadStaticAddress((LPCVOID)(MHW_BASE_ADDRESS + LEVEL_OFFSET));
 
