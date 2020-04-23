@@ -53,7 +53,7 @@ int current_map = 0;
 ///
 // Application settings.
 ///
-std::string version = "0.9.1";
+std::string version = "0.9.5";
 std::string language = "English";
 std::string language_quests = "English";
 rapidjson::Document languageData;
@@ -344,7 +344,7 @@ void FindPlayerIndex()
 		ReadProcessMemory(mhw_handle, (LPCVOID)address, &byteArray, sizeof(byteArray), NULL);
 
 		// Base check
-		if (byteArray == 1125683608) {
+		if (byteArray == 1125819912) {
 			int byteArray2 = 0;
 			ReadProcessMemory(mhw_handle, (LPCVOID)(address + 0x1), &byteArray2, sizeof(byteArray2), NULL);
 
