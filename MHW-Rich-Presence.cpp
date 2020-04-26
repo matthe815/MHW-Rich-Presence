@@ -80,7 +80,7 @@ LPCVOID LEVEL_ADDRESS = 0;
 ///
 long long MHW_BASE_ADDRESS = 0x140000000
 , EQUIPMENT_OFFSET = 0x04ECB860
-, LEVEL_OFFSET = 0x04F29FF0;
+, LEVEL_OFFSET = 0x04F4FA60;
 
 boolean displayName = false; // Whether or not to display the player's name.
 
