@@ -148,7 +148,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
@@ -174,8 +174,9 @@
     <ClCompile Include="discord\user_manager.cpp" />
     <ClCompile Include="discord\voice_manager.cpp" />
     <ClCompile Include="MHW-Rich-Presence.cpp" />
-    <ClCompile Include="Player.cpp" />
+    <ClCompile Include="Structs\Player.cpp" />
     <ClCompile Include="QuestData.cpp" />
+    <ClCompile Include="Structs\WeaponType.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="discord\achievement_manager.h" />
@@ -206,16 +207,15 @@
     <ClInclude Include="fmt\posix.h" />
     <ClInclude Include="fmt\printf.h" />
     <ClInclude Include="fmt\ranges.h" />
-    <ClInclude Include="Player.h" />
+    <ClInclude Include="Structs\Player.h" />
     <ClInclude Include="QuestData.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="bin\discord_game_sdk.dll.lib" />
   </ItemGroup>
   <ItemGroup>
     <None Include="bin\discord_game_sdk.bundle" />
     <None Include="bin\discord_game_sdk.dll" />
-    <None Include="bin\discord_game_sdk.dylib" />
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="bin\discord_game_sdk.dll.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
