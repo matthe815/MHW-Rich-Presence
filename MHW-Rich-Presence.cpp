@@ -6,21 +6,24 @@
 #include "rapidjson/document.h"
 #include <clocale>
 #include "rapidjson/filereadstream.h"
+
 #define BUFFER_SIZE 100024
+#define TICK_WAIT 5000
+#define BASE_ADDRESS 0x140000000
+#define APPLICATION_VERSION 1.0
 
 /*
 	Structures
 */
 #include "Structs/Player.h"
 
-int tickWait = 5000;
 HANDLE handle;
 
 /*
 	Memory addresses
 */
-long long BASE_ADDRESS = 0x140000000;
-long long ADDRESS_LIST[] = { 0x04F4FA60, 0x05063D40 };
+long long STATIC_POINTERS[] {0x0, 0x0, 0x0};
+long long ADDRESS_LIST[] = { 0x04F53580 /* Level offset */, 0x05103AF8 /* Party offset */};
 long long PLAYER_OFFSETS[] = { 0x90, 0x50, 0xD4 };
 
 /*
@@ -36,6 +39,9 @@ Player main_player;
 
 LPCWSTR process_name = L"MonsterHunterWorld.exe";
 
+/*
+	Quickly locate the process id of MHW by process name.
+*/
 auto find_process_id(const std::wstring& processName) -> DWORD {
 	PROCESSENTRY32 processInfo;
 	HANDLE         processesSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
@@ -61,9 +67,12 @@ auto find_process_id(const std::wstring& processName) -> DWORD {
 	return 0;
 }
 
-auto hook() -> HANDLE {
-	HANDLE h = OpenProcess(PROCESS_ALL_ACCESS, true, find_process_id(process_name));
-	return h;
+/*
+	Just hook.
+*/
+auto hook() -> void {
+	handle = OpenProcess(PROCESS_ALL_ACCESS, true, find_process_id(process_name));
+	std::cout << (handle == NULL ? "Failed to hook onto " : "Successfully hooked onto ") << process_name << "!" << std::endl;
 }
 
 /*
@@ -154,6 +163,67 @@ void load_language()
 	std::cout << language + " loaded!" << std::endl;
 }
 
+///
+// Read a static address.
+///
+auto read_static_address(LPCVOID address) -> LPCVOID {
+	LPCVOID address2;
+	ReadProcessMemory(handle, address, &address2, 16, NULL);
+	return address2;
+}
+
+///
+// Default debug information.
+///
+auto write_initial_debug_data() -> void {
+	std::cout << "----------------------------------------" << std::endl;
+	std::cout << languageData["APP_DATA"].GetString() << APPLICATION_VERSION << std::endl;
+	
+	if (hideSelf) // Show a hideSelf disclaimer if the config option is enabled.
+		std::cout << languageData["CLOSE_DISCLAIMER"].GetString() << std::endl;
+
+	std::cout << "----------------------------------------" << std::endl;
+	Sleep(TICK_WAIT);
+}
+
+///
+// Find crucial memory addresses.
+///
+auto find_indexes() -> void {
+	STATIC_POINTERS[1] = (long long)read_static_address((LPCVOID)ADDRESS_LIST[0]); // Set the level offset static address.
+
+	std::cout << "Selected Save Slot: #" << saveSlot << std::endl;
+
+	for (long long address = 0x10000080; address < 0xFFFF0080; address += 0x1000) {
+		int byteArray = 0;
+		ReadProcessMemory(handle, (LPCVOID)address, &byteArray, sizeof(byteArray), NULL);
+
+		// Base check
+		if (byteArray == 1125815816) {
+			int byteArray2 = 0;
+			ReadProcessMemory(handle, (LPCVOID)(address + 0x1), &byteArray2, sizeof(byteArray2), NULL);
+
+			if (byteArray2 == 1)
+				continue;
+
+			STATIC_POINTERS[0] = address;
+
+			if (saveSlot == 2)
+				STATIC_POINTERS[0] += 0x27E9F0;
+			else if (saveSlot == 3)
+				STATIC_POINTERS[0] += 0x4FD3E0;
+
+			std::cout << languageData["PLAYER_ADDRESS_FOUND"].GetString() << std::endl;
+			std::cout << languageData["PLAYER_ADDRESS_LOCATION"].GetString() << (LPCVOID)STATIC_POINTERS[0] << std::endl;
+			std::cout << languageData["PLAYER_ADDRESS_VALUE"].GetString() << byteArray << std::endl;
+			break;
+		}
+	}
+
+	if (STATIC_POINTERS[0] == 0x0)
+		std::cout << languageData["PLAYER_ADDRESS_NOT_FOUND"].GetString() << std::endl;
+}
+
 auto main() -> int {
 	/*
 		Load settings.
@@ -161,20 +231,24 @@ auto main() -> int {
 	load_config();
 	load_language();
 
+	write_initial_debug_data();
 	initialize_discord();
-	handle = hook();
+	hook();
 
 	while (true) {
 		if (handle == NULL) {
-			handle = hook();
+			hook();
 			continue;
 		}
+
+		if (STATIC_POINTERS[0] == 0x0||STATIC_POINTERS[1] == 0x0)
+			find_indexes();
 
 		/*
 			Perform an application tick.
 		*/
 		process_tick();
-		Sleep(tickWait);
+		Sleep(TICK_WAIT);
 	}
 
 	return 0;
