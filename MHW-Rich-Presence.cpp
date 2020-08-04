@@ -344,7 +344,7 @@ void FindPlayerIndex()
 		ReadProcessMemory(mhw_handle, (LPCVOID)address, &byteArray, sizeof(byteArray), NULL);
 
 		// Base check
-		if (byteArray == 1125819912) {
+		if (byteArray == 1126180360) {
 			int byteArray2 = 0;
 			ReadProcessMemory(mhw_handle, (LPCVOID)(address + 0x1), &byteArray2, sizeof(byteArray2), NULL);
 
