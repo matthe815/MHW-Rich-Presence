@@ -4,7 +4,7 @@
   <a href="https://discord.gg/wG826KK">
     <img src="https://discordapp.com/api/guilds/606926504424767488/embed.png">
   </a>
-  ![CodeQL](https://github.com/matthe815/MHW-Rich-Presence/workflows/CodeQL/badge.svg)
+    <img src="https://github.com/matthe815/MHW-Rich-Presence/workflows/CodeQL/badge.svg">
 </div><br/>
 
 ## Details
